@@ -28,7 +28,7 @@ test_data_size = 1024
     Local storage (checkpoints, etc).
 """
 use_two_gpus = False
-gpu_instance = "0"
+gpu_instance = "1"
 out_dir = "/host-dir/gpu" + gpu_instance
 model_file = out_dir + "/varWeights.ckpt"
 image_path = out_dir + "/images"
@@ -54,17 +54,17 @@ num_warmup_steps = 0
 """
     MusicNet configuration
 """
-musicnet_data_dir = "/host-dir/musicnet/musicnet"
+musicnet_data_dir = "/host-dir/musicnet"
 musicnet_vocab_size = 128  # number of labels (notes)
 
 # for data loading in musicnet.py:
 musicnet_resample = False  # if true, resample partial train set at partial validation time
 musicnet_mmap_load = False  # use mmap to load the full training dataset
 musicnet_mmap_partial = False  # use mmap to sample a partial training dataset
-musicnet_mmap_count = 5000  # how many inputs to sample for partial training dataset
+musicnet_mmap_count = 500  # how many inputs to sample for partial training dataset
 
 musicnet_test_step = 1000  # each x steps partial validation tests are launched
-musicnet_full_test_step = 5000  # each x steps full validation test is launched
+musicnet_full_test_step = 10000  # each x steps full validation test is launched
 musicnet_n_test_batches = 30  # n of batches for partial validation AveragePrecisionScore
 
 """
@@ -99,10 +99,10 @@ all_tasks = {"sort", "kvsort", "id", "rev", "rev2", "incr", "add", "left",
 language_tasks = {"lambada", "musicnet"}
 
 # suggested settings for binary addition
-task = "badd"
-n_input = 13  # range of input digits
-n_output = 4  # range of output digits
-n_hidden = 48 * 4  # number of maps
+# task = "badd"
+# n_input = 13  # range of input digits
+# n_output = 4  # range of output digits
+# n_hidden = 48 * 4  # number of maps
 
 # suggested settings for rotation
 # task = "rol"
@@ -196,20 +196,21 @@ n_hidden = 48 * 4  # number of maps
 # batch_size = 64
 # bins = [256]
 
-# task = "musicnet"
-# input_type = tf.float32
-# n_input = musicnet_vocab_size
-# n_output = musicnet_vocab_size
-# n_hidden = 48 * 4
-# input_word_dropout_keep_prob = 1.0
-# label_smoothing = 0.01
-# embedding_size = 1
-# max_test_length = 10000
-# musicnet_window_size = 4096  # 128 .. 8192
-# training_iters = 20000
-# batch_size = 32
-# n_Benes_blocks = 2
-# bins = [musicnet_window_size]
+task = "musicnet"
+input_type = tf.float32
+n_input = musicnet_vocab_size
+n_output = musicnet_vocab_size
+n_hidden = 48 * 4
+input_word_dropout_keep_prob = 1.0
+label_smoothing = 0.01
+embedding_size = 1
+max_test_length = 10000
+test_data_size = 10000
+musicnet_window_size = 4096  # 128 .. 8192
+training_iters = 400000
+batch_size = 32
+n_Benes_blocks = 2
+bins = [musicnet_window_size]
 
 initial_learning_rate = 0.00125 * np.sqrt(96 / n_hidden)
 min_learning_rate = initial_learning_rate

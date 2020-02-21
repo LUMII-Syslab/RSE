@@ -78,7 +78,7 @@ class Musicnet(LanguageTask):
         loaded = np.load(self.data_dir + MUSICNET_VALIDATION)
         self.validation_set = self.crop(loaded)
         del loaded
-        np.random.shuffle(self.validation_set)
+        np.random.shuffle(self.validation_set)  # because data_utils doesn't shuffle it
         data_utils.test_set["musicnet"][self.window_size] = self.validation_set
 
     def prepare_test_data(self):
