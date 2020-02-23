@@ -194,14 +194,14 @@ class MusicNetLateralModel(ModelSpecific):
         self.__target = target
         self.__n_classes = n_classes
         self.__label_smoothing = label_smoothing
-        self.window_size = cnf.musicnet_window_size // 4  # /4 because of convolutions
-        self.stride_labels = 128 // 4 # segment is labeled at positions with this stride. /4 because of convolutions
-        self.n_frames = self.window_size // self.stride_labels - 1  # -1 to exclude edges
+        self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
+        self.stride_labels = 128  # segment is labeled at positions with this stride
+        self.n_frames = cnf.musicnet_window_size // self.stride_labels - 1  # -1 to exclude edges
 
     def transformed_prediction(self, prediction):
         transformed_pred = []
         for i in range(self.n_frames):
-            transformed_pred += [prediction[:, i*self.stride_labels, :]-4]  # -4 to correct for class imbalance
+            transformed_pred += [prediction[:, i*self.stride_labels//self.conv_downscale, :]-4]  # -4 to correct for class imbalance
         return transformed_pred
 
     def unflatten_labels(self):
@@ -225,7 +225,7 @@ class MusicNetLateralModel(ModelSpecific):
         loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
                                                 label_smoothing=(self.__label_smoothing + 0.1) / 2)
 
-        lateral_coef = 0.1
+        lateral_coef = 2 * 1/self.n_frames
         total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
 
         return total_loss, loss_mid

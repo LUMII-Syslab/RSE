@@ -115,8 +115,7 @@ def collect_bins():
     for some_task in cnf.all_tasks:
         for L in cnf.bins:
             random.shuffle(train_set[some_task][L])
-            if cnf.task is not "musicnet":
-                random.shuffle(test_set[some_task][L])
+            random.shuffle(test_set[some_task][L])
 
 
 def init_data(task, length, nbr_cases, nclass):

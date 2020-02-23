@@ -169,7 +169,7 @@ with tf.Graph().as_default():
                         if n_overshoot > 0:  # removes duplicates
                             predictions = predictions[:-(128 * n_overshoot)]
                             labels = labels[:-(128 * n_overshoot)]
-                        print("Cutting {} input duplicates. Total inputs = {}".format(n_overshoot, len(labels) / 128))
+                        print("Cutting {} input duplicates. Total inputs = {}".format(n_overshoot, len(labels) // 128))
                         # if step % (cnf.musicnet_full_test_step * 5) == 0:
                         #     np.save("saved_arrays_{}.npy".format(step),
                         #             np.array([predictions, labels]))  # save label and prediction arrays

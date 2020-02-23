@@ -206,9 +206,9 @@ label_smoothing = 0.01
 embedding_size = 1
 max_test_length = 10000
 test_data_size = 10000
-musicnet_window_size = 4096  # 128 .. 8192
-training_iters = 400000
-batch_size = 32
+musicnet_window_size = 8192  # 128 .. 8192
+training_iters = 800000 + 1
+batch_size = 16
 n_Benes_blocks = 2
 bins = [musicnet_window_size]
 
