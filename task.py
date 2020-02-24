@@ -251,8 +251,9 @@ class Default(Task):
         base = 10
         if task[0] == "b": base = 2
         if task[0] == "q": base = 4
-        d1 = [np.asscalar(num) for num in np.random.randint(base, size=k)]
-        d2 = [np.asscalar(num) for num in np.random.randint(base, size=k)]
+        d1 = [random.randrange(base) for _ in range(k)]
+        d2 = [random.randrange(base) for _ in range(k)]
+        #d2 = [np.asscalar(num) for num in np.random.randint(base, size=k)]
         if task in ["add", "badd", "qadd"]:
             res = add(d1, d2, base)
         elif task in ["mul", "bmul", "qmul", "mulbcd"]:

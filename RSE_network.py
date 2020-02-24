@@ -11,6 +11,7 @@ reset_mem = []
 prev_mem_list = []
 residual_list = []
 candidate_mem = []
+info_alpha = []
 dropout_keep_prob = 1.0
 add_noise = True
 
@@ -105,6 +106,73 @@ def shuffle_layer(mem, do_ror=True):
     mem_shuffled = tf.gather(mem, rev_indices, axis=1)
     return mem_shuffled
 
+def info_dropout(inputs, prefix="infodrop"):
+    """
+    information dropout
+    By setting sigma0=0 we make the operation deterministic (useful at testing time)
+    """
+
+    def sample_lognormal(mean, sigma=None):
+        """
+        Samples from a log-normal distribution using the reparametrization
+        trick so that we can backprogpagate the gradients through the sampling.
+        By setting sigma0=0 we make the operation deterministic (useful at testing time)
+        """
+        e = tf.random_normal(tf.shape(mean), mean=0., stddev=1.)
+        return tf.exp(mean + sigma * e)
+
+    def noise_exp_corrected(shape, stddev):
+        a = tf.random_normal(shape)
+        b = tf.square(a) - 1
+        noise = 1 - b * stddev
+        correction_noise = tf.random_normal(shape, stddev=stddev * 0.5)
+        return noise + correction_noise
+
+
+    # def noise1_corrected(shape, noise_scale):
+    #     noise_scale = tf.exp(-noise_scale)
+    #     n = tf.random_uniform(shape, 0.0, 1.0)
+    #     correction_factor = ((noise_scale + 1) / noise_scale)
+    #     noise = (1 - tf.pow(n, noise_scale))
+    #     correction_noise = tf.random_normal(shape) * (correction_factor - 1) * 0.5
+    #     return noise * correction_factor + correction_noise
+
+    # one sided mul noise
+    #noise_scale=0 gives uniform distribution
+    #smaller values give less noise
+    def noise1(shape, noise_scale):
+        noise_scale = tf.exp(-noise_scale)
+        n = tf.random_uniform(shape, 0.0, 1.0)
+        correction_factor = ((noise_scale + 1) / noise_scale)
+        noise = (1 - tf.pow(n, noise_scale))
+        if is_training:
+            return noise
+        else:
+             return 1.0/correction_factor
+
+    num_units = inputs.get_shape().as_list()[2]
+    log_sigma_sq = conv_linear(inputs, 1, num_units, num_units, 0.0, prefix + "/infodrop", init_scale=1.0)-6
+    #alpha = tf.sigmoid(alpha)
+    desired_minimum = 0.0 # the minimum of log_sigma_sq 
+    KL_loss0 = -(1 + log_sigma_sq-desired_minimum - tf.exp(log_sigma_sq-desired_minimum))
+    alpha = tf.exp(log_sigma_sq)*0.5
+    tf.summary.histogram(prefix + '/infohistogram', log_sigma_sq)
+    info_alpha.append(log_sigma_sq)
+    # Rescale alpha in the allowed range and add a small value for numerical stability
+    #alpha = 0.001 + max_alpha * alpha
+    # Similarly to variational dropout we renormalize so that
+    # the KL term is zero for alpha == max_alpha
+    #kl = - tf.log(alpha) + tf.log(max_alpha + 0.001)
+    kl = tf.reduce_mean(KL_loss0)
+    tf.add_to_collection('kl_terms', kl)
+    # alpha = tf.minimum(alpha, 0.5)
+    log_sigma_sq = tf.minimum(log_sigma_sq, desired_minimum)
+    #e = sample_lognormal(mean=tf.zeros_like(inputs), sigma=alpha)
+    #e = noise_exp_corrected(inputs.shape, alpha)
+    e = noise1(inputs.shape, log_sigma_sq)
+    # Noisy output of Information Dropout
+    return inputs * e
+
 
 def switch_layer(mem_shuffled, kernel_width, prefix):
     """Computation unit for every two adjacent elements"""
@@ -145,7 +213,9 @@ def switch_layer(mem_shuffled, kernel_width, prefix):
     mem_shuffled_x = tf.reshape(mem_shuffled_x, [batch_size, length // 2, in_maps * 2])
     candidate = residual_scale * mem_shuffled_x + candidate * candidate_weight
     candidate = tf.reshape(candidate, [batch_size, length, num_units])
-    candidate = dropout(candidate, n_bits)
+    #candidate = dropout(candidate, n_bits)
+    candidate = info_dropout(candidate, prefix=prefix)
+    candidate = add_noise_add(candidate, 0.01)
 
     return candidate
 

@@ -458,6 +458,7 @@ class DNGPU:
                 RSE_network.candidate_mem = []
                 RSE_network.prev_mem_list = []
                 RSE_network.residual_list = []
+                RSE_network.info_alpha = []
 
                 if self.use_two_gpus:
                     device = "/device:GPU:" + ("0" if seqLength >= self.bins[-1] else "1")
@@ -513,6 +514,10 @@ class DNGPU:
             prev_img = prev_img[:, 0:1, :, :]
             prev_img = tf.cast(prev_img * 255, dtype=tf.uint8)
             tf.summary.image("residual_mem", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
+        if RSE_network.info_alpha:
+            prev_img = tf.stack(RSE_network.info_alpha)
+            prev_img = prev_img[:, 0:1, :, :]
+            tf.summary.image("info_alpha", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
 
         candidate_img = tf.stack(RSE_network.candidate_mem)
         candidate_img = candidate_img[:, 0:1, :, :]
@@ -527,6 +532,11 @@ class DNGPU:
 
         self.sat_loss = saturation * self.saturation_weight
         cost = self.base_cost + self.sat_loss
+
+        kl_terms = tf.get_collection('kl_terms')
+        kl_sum = tf.add_n(kl_terms) if kl_terms else 0.0
+        tf.summary.scalar("infoDrop", kl_sum)
+        cost+=kl_sum*0.0001
 
         tvars = [v for v in tf.trainable_variables()]
         for var in tvars:
