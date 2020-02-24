@@ -106,7 +106,7 @@ def shuffle_layer(mem, do_ror=True):
     mem_shuffled = tf.gather(mem, rev_indices, axis=1)
     return mem_shuffled
 
-def info_dropout(inputs, prefix="infodrop", initial_value=-6, desired_value = 0.0):
+def info_dropout(inputs, prefix="infodrop", initial_value=-4, max_value = 0.0):
     """
     Information dropout
     Heavily modified from https://arxiv.org/abs/1611.01353
@@ -120,22 +120,36 @@ def info_dropout(inputs, prefix="infodrop", initial_value=-6, desired_value = 0.
         """
         noise_scale = tf.exp(-noise_scale)
         n = tf.random_uniform(shape, 0.0, 1.0)
-        expected_value = noise_scale/(noise_scale + 1)
+        expected_value = noise_scale/(noise_scale + 1)# = sigmoid(-noise_scale)
         noise = (1 - tf.pow(n, noise_scale))
         if is_training:
             return noise #noise value during training
         else:
              return expected_value #expected value at test time
 
+    def addNoise1_dropout(shape, keep_prob):
+        noise_scale = keep_prob / (1 - keep_prob)
+        n = tf.random_uniform(shape, 0.0, 1.0)
+        noise = (1 - tf.pow(n, noise_scale))
+        if is_training:
+            return noise #noise value during training
+        else:
+             return keep_prob #expected value at test time
+
+    min_dropout = 0.5
+
     num_units = inputs.get_shape().as_list()[2]
-    log_sigma_sq = conv_linear(inputs, 1, num_units, num_units, 0.0, prefix + "/infodrop") + initial_value
-    KL_loss0 = -(1 + log_sigma_sq - desired_value - tf.exp(log_sigma_sq - desired_value))
+    logits = conv_linear(inputs, 1, num_units, num_units, 0.0, prefix + "/infodrop") + inv_sigmoid(0.9)
+    log_sigma_sq = tf.sigmoid(logits)
+    KL_loss0 = tf.abs(log_sigma_sq - min_dropout)+tf.nn.relu(inv_sigmoid(min_dropout)-logits)
+    #KL_loss0 = -(1 + log_sigma_sq - desired_value - tf.exp(log_sigma_sq - desired_value))
     tf.summary.histogram(prefix + '/infohistogram', log_sigma_sq)
     info_alpha.append(log_sigma_sq)
     kl = tf.reduce_mean(KL_loss0)
     tf.add_to_collection('kl_terms', kl) # !!! NB these values should be added to the loss function with a small weight !!!
-    log_sigma_sq = tf.minimum(log_sigma_sq, desired_value) #clip to thedesired minimum value
-    e = continous_dropout(inputs.shape, log_sigma_sq)
+    #log_sigma_sq = tf.minimum(log_sigma_sq, max_value) #clip to thedesired maximum noise value
+    log_sigma_sq = tf.maximum(log_sigma_sq*0.999, min_dropout)  # clip to the desired maximum noise value
+    e = addNoise1_dropout(inputs.shape, log_sigma_sq)
     return inputs * e
 
 
