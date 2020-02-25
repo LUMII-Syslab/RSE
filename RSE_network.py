@@ -15,6 +15,12 @@ info_alpha = []
 dropout_keep_prob = 1.0
 add_noise = True
 
+def soft_sigmoid(x):
+    return (tf.nn.softsign(x)+1)*0.5
+
+def inv_soft_sigmoid(x):
+    x0 = x*2-1
+    return x0/(1-np.abs(x0))
 
 def gelu(x):
     return x * tf.sigmoid(1.702 * x)
@@ -138,18 +144,18 @@ def info_dropout(inputs, prefix="infodrop", initial_value=-4, max_value = 0.0):
 
     min_dropout = 0.5
 
-    num_units = inputs.get_shape().as_list()[2]
+    num_units = inputs.get_shape().as_list()[-1]
     logits = conv_linear(inputs, 1, num_units, num_units, 0.0, prefix + "/infodrop") + inv_sigmoid(0.9)
-    log_sigma_sq = tf.sigmoid(logits)
-    KL_loss0 = tf.abs(log_sigma_sq - min_dropout)+tf.nn.relu(inv_sigmoid(min_dropout)-logits)
-    #KL_loss0 = -(1 + log_sigma_sq - desired_value - tf.exp(log_sigma_sq - desired_value))
-    tf.summary.histogram(prefix + '/infohistogram', log_sigma_sq)
-    info_alpha.append(log_sigma_sq)
+    keep_prob = tf.sigmoid(logits)
+    KL_loss0 = tf.square(keep_prob - min_dropout)+tf.nn.relu(inv_sigmoid(min_dropout)-logits)
+    #KL_loss0 = -(1 + keep_prob - desired_value - tf.exp(keep_prob - desired_value))
+    tf.summary.histogram(prefix + '/infohistogram', keep_prob)
+    info_alpha.append(keep_prob)
     kl = tf.reduce_mean(KL_loss0)
     tf.add_to_collection('kl_terms', kl) # !!! NB these values should be added to the loss function with a small weight !!!
-    #log_sigma_sq = tf.minimum(log_sigma_sq, max_value) #clip to thedesired maximum noise value
-    log_sigma_sq = tf.maximum(log_sigma_sq*0.999, min_dropout)  # clip to the desired maximum noise value
-    e = addNoise1_dropout(inputs.shape, log_sigma_sq)
+    #keep_prob = tf.minimum(keep_prob, max_value) #clip to thedesired maximum noise value
+    keep_prob = tf.maximum(keep_prob*0.999, min_dropout)  # clip to the desired maximum noise value
+    e = addNoise1_dropout(inputs.shape, keep_prob)
     return inputs * e
 
 
@@ -167,6 +173,8 @@ def switch_layer(mem_shuffled, kernel_width, prefix):
         res = layer_norm(res, prefix + "/norm/" + suffix)
         res_middle = res
         res = gelu(res)
+        #res = info_dropout(res, prefix=prefix)
+
         res = conv_linear(res, kernel_width, middle_units, out_units * 2, 0.0, prefix + "/cand2/" + suffix,
                           init_scale=1.0)
         return res, res_middle
