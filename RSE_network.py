@@ -112,50 +112,33 @@ def shuffle_layer(mem, do_ror=True):
     mem_shuffled = tf.gather(mem, rev_indices, axis=1)
     return mem_shuffled
 
-def info_dropout(inputs, prefix="infodrop", initial_value=-4, max_value = 0.0):
+def info_dropout(inputs, prefix="infodrop", min_keep_prob = 0.5, initial_keep_prob = 0.9):
     """
     Information dropout
     Heavily modified from https://arxiv.org/abs/1611.01353
     """
 
-    def continous_dropout(shape, noise_scale):
+    def continous_dropout(shape, keep_prob):
         """
         one sided multiplicative noise from beta-distribution
-        a good range for noise_scale is (-10, 1). Small values give less noise
-        noise_scale = 0 gives uniform distribution
+        keep_prob should be in (0,1)
+        keep_prob = 0.5 gives uniform distribution
         """
-        noise_scale = tf.exp(-noise_scale)
-        n = tf.random_uniform(shape, 0.0, 1.0)
-        expected_value = noise_scale/(noise_scale + 1)# = sigmoid(-noise_scale)
-        noise = (1 - tf.pow(n, noise_scale))
-        if is_training:
-            return noise #noise value during training
-        else:
-             return expected_value #expected value at test time
-
-    def addNoise1_dropout(shape, keep_prob):
         noise_scale = keep_prob / (1 - keep_prob)
         n = tf.random_uniform(shape, 0.0, 1.0)
         noise = (1 - tf.pow(n, noise_scale))
-        if is_training:
-            return noise #noise value during training
-        else:
-             return keep_prob #expected value at test time
-
-    min_dropout = 0.5
+        return noise
 
     num_units = inputs.get_shape().as_list()[-1]
-    logits = conv_linear(inputs, 1, num_units, num_units, 0.0, prefix + "/infodrop") + inv_sigmoid(0.9)
+    logits = conv_linear(inputs, 1, num_units, num_units, inv_sigmoid(initial_keep_prob), prefix + "/infodrop")
     keep_prob = tf.sigmoid(logits)
-    KL_loss0 = tf.square(keep_prob - min_dropout)+tf.nn.relu(inv_sigmoid(min_dropout)-logits)
-    #KL_loss0 = -(1 + keep_prob - desired_value - tf.exp(keep_prob - desired_value))
+    KL_loss = tf.square(keep_prob - min_keep_prob)# + tf.nn.relu(inv_sigmoid(min_keep_prob) - logits)
     tf.summary.histogram(prefix + '/infohistogram', keep_prob)
     info_alpha.append(keep_prob)
-    kl = tf.reduce_mean(KL_loss0)
+    kl = tf.reduce_mean(KL_loss)
     tf.add_to_collection('kl_terms', kl) # !!! NB these values should be added to the loss function with a small weight !!!
-    #keep_prob = tf.minimum(keep_prob, max_value) #clip to thedesired maximum noise value
-    keep_prob = tf.maximum(keep_prob*0.999, min_dropout)  # clip to the desired maximum noise value
-    e = addNoise1_dropout(inputs.shape, keep_prob)
+    keep_prob = tf.maximum(keep_prob * 0.999, min_keep_prob)  # clip to the desired maximum noise value
+    e = continous_dropout(inputs.shape, keep_prob) if is_training else keep_prob
     return inputs * e
 
 
