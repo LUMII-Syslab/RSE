@@ -184,9 +184,9 @@ def switch_layer(mem_shuffled, kernel_width, prefix):
     mem_shuffled_x = tf.reshape(mem_shuffled_x, [batch_size, length // 2, in_maps * 2])
     candidate = residual_scale * mem_shuffled_x + candidate * candidate_weight
     candidate = tf.reshape(candidate, [batch_size, length, num_units])
-    #candidate = dropout(candidate, n_bits)
-    candidate = info_dropout(candidate, prefix=prefix)
-    candidate = add_noise_add(candidate, 0.01)
+    candidate = dropout(candidate, n_bits)
+    #candidate = info_dropout(candidate, prefix=prefix)
+    #candidate = add_noise_add(candidate, 0.01)
 
     return candidate
 
