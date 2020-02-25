@@ -130,7 +130,8 @@ def info_dropout(inputs, prefix="infodrop", min_keep_prob = 0.5, initial_keep_pr
         return noise
 
     num_units = inputs.get_shape().as_list()[-1]
-    logits = conv_linear(inputs, 1, num_units, num_units, inv_sigmoid(initial_keep_prob), prefix + "/infodrop")
+    input_norm = layer_norm(inputs, prefix + "/infonorm")
+    logits = conv_linear(input_norm, 1, num_units, num_units, 0, prefix + "/infodrop")*0.1+inv_sigmoid(initial_keep_prob)
     keep_prob = tf.sigmoid(logits)
     KL_loss = tf.square(keep_prob - min_keep_prob)# + tf.nn.relu(inv_sigmoid(min_keep_prob) - logits)
     tf.summary.histogram(prefix + '/infohistogram', keep_prob)
