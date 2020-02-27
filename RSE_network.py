@@ -112,36 +112,6 @@ def shuffle_layer(mem, do_ror=True):
     mem_shuffled = tf.gather(mem, rev_indices, axis=1)
     return mem_shuffled
 
-def info_dropout(inputs, prefix="infodrop", min_keep_prob = 0.5, initial_keep_prob = 0.9):
-    """
-    Information dropout
-    Heavily modified from https://arxiv.org/abs/1611.01353
-    """
-
-    def continous_dropout(shape, keep_prob):
-        """
-        one sided multiplicative noise from beta-distribution
-        keep_prob should be in (0,1)
-        keep_prob = 0.5 gives uniform distribution
-        """
-        noise_scale = keep_prob / (1 - keep_prob)
-        n = tf.random_uniform(shape, 0.0, 1.0)
-        noise = (1 - tf.pow(n, noise_scale))
-        return noise
-
-    num_units = inputs.get_shape().as_list()[-1]
-    input_norm = layer_norm(inputs, prefix + "/infonorm")
-    logits = conv_linear(input_norm, 1, num_units, num_units, 0, prefix + "/infodrop")*0.1+inv_sigmoid(initial_keep_prob)
-    keep_prob = tf.sigmoid(logits)
-    KL_loss = tf.square(keep_prob - min_keep_prob)# + tf.nn.relu(inv_sigmoid(min_keep_prob) - logits)
-    tf.summary.histogram(prefix + '/infohistogram', keep_prob)
-    info_alpha.append(keep_prob)
-    kl = tf.reduce_mean(KL_loss)
-    tf.add_to_collection('kl_terms', kl) # !!! NB these values should be added to the loss function with a small weight !!!
-    keep_prob = tf.maximum(keep_prob * 0.999, min_keep_prob)  # clip to the desired maximum noise value
-    e = continous_dropout(inputs.shape, keep_prob) if is_training else keep_prob
-    return inputs * e
-
 
 def switch_layer(mem_shuffled, kernel_width, prefix):
     """Computation unit for every two adjacent elements"""
@@ -185,7 +155,6 @@ def switch_layer(mem_shuffled, kernel_width, prefix):
     candidate = residual_scale * mem_shuffled_x + candidate * candidate_weight
     candidate = tf.reshape(candidate, [batch_size, length, num_units])
     candidate = dropout(candidate, n_bits)
-    #candidate = info_dropout(candidate, prefix=prefix)
     #candidate = add_noise_add(candidate, 0.01)
 
     return candidate
