@@ -158,8 +158,12 @@ with tf.Graph().as_default():
                     for i in range(n_test_inputs // cnf.batch_size):
                         batch_xs_long, batch_ys_long = data_supplier.supply_test_data(cnf.forward_max, cnf.batch_size)
                         pred_flat = (learner.get_result(sess, batch_xs_long, batch_ys_long)).flatten()
-                        labels_flat = (
-                                np.array(batch_ys_long[0])[:, :128] - 1).flatten()  # gets 0/1 labels on 128 notes
+                        # labels_flat = (
+                        #         np.array(batch_ys_long[0])[:, :128] - 1).flatten()  # gets 0/1 labels on 128 notes
+                        stride_labels = 128
+                        n_frames = cnf.musicnet_window_size // stride_labels - 1
+                        labels_pre = np.array(batch_ys_long[0])[:, stride_labels*(n_frames//2):stride_labels*(n_frames//2)+128]
+                        labels_flat = (labels_pre - 1).flatten()  # gets 0/1 labels on 128 notes
                         predictions += list(pred_flat)
                         labels += list(labels_flat)
                     predictions = np.array(predictions)

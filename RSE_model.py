@@ -253,6 +253,76 @@ class MusicNetLateralModel(ModelSpecific):
         return tf.sigmoid(self.transformed_prediction(prediction)[0])
 
 
+class MusicNetLateralOrderedModel(ModelSpecific):
+    def __init__(self, target, n_classes, label_smoothing) -> None:
+        self.__target = target
+        self.__n_classes = n_classes
+        self.__label_smoothing = label_smoothing
+        self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
+        self.stride_labels = 128  # segment is labeled at positions with this stride
+        self.n_frames = cnf.musicnet_window_size // self.stride_labels - 1  # -1 to exclude edges
+
+    def transformed_prediction(self, prediction):
+        transformed_pred = []
+        for i in range(self.n_frames):
+            transformed_pred += [prediction[:, i*self.stride_labels//self.conv_downscale, :]-4]  # -4 to correct for class imbalance
+        # for ordered lateral labels:
+        # transformed_pred[0], transformed_pred[1 + self.n_frames // 2] = transformed_pred[1 + self.n_frames // 2], transformed_pred[0]
+        return transformed_pred
+
+    def unflatten_labels(self):
+        unflattened_labels = []
+        for i in range(self.n_frames):
+            unflattened_labels += [self.__target[:, i*self.stride_labels:i*self.stride_labels+128]-1]  # -1 to get 0/1 labels
+        # for ordered lateral labels:
+        # unflattened_labels[0], unflattened_labels[1 + self.n_frames // 2] = unflattened_labels[1 + self.n_frames // 2], unflattened_labels[0]
+        return unflattened_labels
+
+    def cost(self, prediction):
+        transformed_pred = self.transformed_prediction(prediction)
+        unflattened_labels = self.unflatten_labels()
+        loss_lateral = 0
+        for i in range(self.n_frames):
+            loss_lateral += tf.losses.sigmoid_cross_entropy(
+                multi_class_labels=unflattened_labels[i], logits=transformed_pred[i], label_smoothing=self.__label_smoothing)
+        loss_mid = tf.losses.sigmoid_cross_entropy(
+                multi_class_labels=unflattened_labels[self.n_frames//2], logits=transformed_pred[self.n_frames//2], label_smoothing=self.__label_smoothing)
+
+        # add some small loss for all entries to reduce the unused ones:
+        pred_others = prediction[:, 0:, :] - 4
+        loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
+                                                label_smoothing=(self.__label_smoothing + 0.1) / 2)
+
+        lateral_coef = 2 * 1/self.n_frames
+        total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
+
+        return total_loss, loss_mid
+
+    def calibrated_result(self, prediction):
+        # calibrating for the mid label
+        with tf.variable_scope("corrected_result"):
+            prediction = tf.stop_gradient(self.transformed_prediction(prediction)[self.n_frames//2])
+            # scale to undo label smoothing
+            offset = tf.get_variable('offset', (prediction.shape[-1]), initializer=tf.zeros_initializer)
+            scale = tf.get_variable('scale', (prediction.shape[-1]), initializer=tf.ones_initializer)
+            prediction = prediction * scale + offset
+            unflattened_labels = self.unflatten_labels()[self.n_frames//2]
+            labels = tf.cast(unflattened_labels, tf.float32)  # gets labels on 128 notes without padding
+            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=labels, logits=prediction)
+            corrected_result = tf.sigmoid(prediction)
+        return corrected_result, loss
+
+    def accuracy(self, prediction):
+        pred_1 = tf.sigmoid(self.transformed_prediction(prediction)[self.n_frames//2])
+        labels_1 = tf.cast(self.unflatten_labels()[self.n_frames//2], tf.float32)  # gets labels on 128 notes without padding
+        accuracy = tf.cast(tf.equal(tf.round(pred_1), labels_1), tf.float32)
+        return tf.reduce_mean(accuracy)
+
+    def result(self, prediction):
+        # return predictions for mid
+        return tf.sigmoid(self.transformed_prediction(prediction)[self.n_frames//2])
+
+
 class DNGPU:
     def __init__(self, num_units, bins, n_input, count_list, n_classes, dropout_keep_prob,
                  create_translation_model=False, use_two_gpus=False):
@@ -384,7 +454,7 @@ class DNGPU:
             model = LambadaModel(y_in, self.n_classes, cnf.label_smoothing)
         elif cnf.task == "musicnet":
             # model = MusicNetModel(y_in, self.n_classes, cnf.label_smoothing)
-            model = MusicNetLateralModel(y_in, self.n_classes, cnf.label_smoothing)
+            model = MusicNetLateralOrderedModel(y_in, self.n_classes, cnf.label_smoothing)
         else:
             model = DefaultModel(y_in, self.n_classes, cnf.label_smoothing)
 
@@ -493,39 +563,40 @@ class DNGPU:
         tf.summary.scalar("base/error_longest", 1 - a)
         tf.summary.histogram("logits", logits)
 
-        if RSE_network.gate_mem:
-            gate_img = tf.stack(RSE_network.gate_mem)
-            gate_img = gate_img[:, 0:1, :, :]
-            gate_img = tf.cast(gate_img * 255, dtype=tf.uint8)
-            tf.summary.image("gate", tf.transpose(gate_img, [3, 0, 2, 1]), max_outputs=16)
-        if RSE_network.reset_mem:
-            reset_img = tf.stack(RSE_network.reset_mem)
-            reset_img = tf.clip_by_value(reset_img, -2, 2)
-            tf.summary.histogram("reset", reset_img)
-            reset_img = reset_img[:, 0:1, :, :]
-            tf.summary.image("reset", tf.transpose(reset_img, [3, 0, 2, 1]), max_outputs=16)
-        if RSE_network.prev_mem_list:
-            prev_img = tf.stack(RSE_network.prev_mem_list)
-            prev_img = prev_img[:, 0:1, :, :]
-            prev_img = tf.cast(prev_img * 255, dtype=tf.uint8)
-            tf.summary.image("prev_mem", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
-        if RSE_network.residual_list:
-            prev_img = tf.stack(RSE_network.residual_list)
-            prev_img = prev_img[:, 0:1, :, :]
-            prev_img = tf.cast(prev_img * 255, dtype=tf.uint8)
-            tf.summary.image("residual_mem", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
-        if RSE_network.info_alpha:
-            prev_img = tf.stack(RSE_network.info_alpha)
-            prev_img = prev_img[:, 0:1, :, :]
-            tf.summary.image("info_alpha", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
+        if cnf.task is not "musicnet":
+            if RSE_network.gate_mem:
+                gate_img = tf.stack(RSE_network.gate_mem)
+                gate_img = gate_img[:, 0:1, :, :]
+                gate_img = tf.cast(gate_img * 255, dtype=tf.uint8)
+                tf.summary.image("gate", tf.transpose(gate_img, [3, 0, 2, 1]), max_outputs=16)
+            if RSE_network.reset_mem:
+                reset_img = tf.stack(RSE_network.reset_mem)
+                reset_img = tf.clip_by_value(reset_img, -2, 2)
+                tf.summary.histogram("reset", reset_img)
+                reset_img = reset_img[:, 0:1, :, :]
+                tf.summary.image("reset", tf.transpose(reset_img, [3, 0, 2, 1]), max_outputs=16)
+            if RSE_network.prev_mem_list:
+                prev_img = tf.stack(RSE_network.prev_mem_list)
+                prev_img = prev_img[:, 0:1, :, :]
+                prev_img = tf.cast(prev_img * 255, dtype=tf.uint8)
+                tf.summary.image("prev_mem", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
+            if RSE_network.residual_list:
+                prev_img = tf.stack(RSE_network.residual_list)
+                prev_img = prev_img[:, 0:1, :, :]
+                prev_img = tf.cast(prev_img * 255, dtype=tf.uint8)
+                tf.summary.image("residual_mem", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
+            if RSE_network.info_alpha:
+                prev_img = tf.stack(RSE_network.info_alpha)
+                prev_img = prev_img[:, 0:1, :, :]
+                tf.summary.image("info_alpha", tf.transpose(prev_img, [3, 0, 2, 1]), max_outputs=16)
 
-        candidate_img = tf.stack(RSE_network.candidate_mem)
-        candidate_img = candidate_img[:, 0:1, :, :]
-        candidate_img = tf.cast((candidate_img + 1.0) * 127.5, dtype=tf.uint8)
-        tf.summary.image("candidate", tf.transpose(candidate_img, [3, 0, 2, 1]), max_outputs=16)
+            candidate_img = tf.stack(RSE_network.candidate_mem)
+            candidate_img = candidate_img[:, 0:1, :, :]
+            candidate_img = tf.cast((candidate_img + 1.0) * 127.5, dtype=tf.uint8)
+            tf.summary.image("candidate", tf.transpose(candidate_img, [3, 0, 2, 1]), max_outputs=16)
 
-        mem1 = mem1[:, 0:1, :, :]
-        tf.summary.image("mem", tf.transpose(mem1, [3, 0, 2, 1]), max_outputs=16)
+            mem1 = mem1[:, 0:1, :, :]
+            tf.summary.image("mem", tf.transpose(mem1, [3, 0, 2, 1]), max_outputs=16)
 
         saturation = tf.reduce_sum(tf.stack(saturation_loss)) / sum_weight
         tf.summary.scalar("base/activation_mean", tf.sqrt(total_mean_loss))

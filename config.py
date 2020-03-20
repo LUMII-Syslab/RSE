@@ -18,7 +18,7 @@ input_word_dropout_keep_prob = 1.0
 label_smoothing = 0.01
 embedding_size = None
 
-""" 
+"""
     Test configuration
 """
 max_test_length = 5000

@@ -54,8 +54,8 @@ def create_set(n_songs, stride, mode):
         frame_positions = []  # positions of the labeled frames
         for i in range(n_frames):
             frame_positions += [stride_labels * (i + 1)]
-        # switch the midpoint labels to the beginning of the labels
-        frame_positions[0], frame_positions[1 + n_frames // 2] = frame_positions[1 + n_frames // 2], frame_positions[0]
+        # switch the midpoint labels to the beginning of the labels:
+        # frame_positions[0], frame_positions[1 + n_frames // 2] = frame_positions[1 + n_frames // 2], frame_positions[0]
         x_song = np.empty([n_inputs, d], dtype=data_type)
         y_song = np.zeros([n_inputs, d], dtype=data_type)  # zeros for padding
         y_song[:, :m * n_frames] = 1  # 1 for the non padded parts
