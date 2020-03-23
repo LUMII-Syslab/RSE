@@ -31,7 +31,7 @@ class Musicnet(LanguageTask):
         midpoint = INPUT_LENGTH // 2
         half_window = self.window_size // 2
         inputs = np.expand_dims(xy_set[:, 0, midpoint - half_window:midpoint + half_window], axis=1)
-        labels = np.expand_dims(xy_set[:, 1, :self.window_size], axis=1)  # crops padding
+        labels = np.expand_dims(xy_set[:, 1, midpoint - half_window:midpoint + half_window], axis=1)  # crops padding
         result = np.concatenate((inputs, labels), axis=1)
         return list(result)  # returns [[[inputs1],[labels1]],..] (,2,wsize)
 

@@ -142,8 +142,12 @@ def run_test_musicnet():
                         threshold += 1000 // BATCH_SIZE
                     batch_xs, batch_ys = data_supplier.supply_test_data(test_length, BATCH_SIZE)
                     pred_flat = (tester.get_result(sess, batch_xs, batch_ys)).flatten()
-                    labels_flat = (np.array(batch_ys[0])[:,
-                                   :128] - 1).flatten()  # gets 0/1 labels on 128 notes without padding
+
+                    stride_labels = 128
+                    n_frames = cnf.musicnet_window_size // stride_labels - 1
+                    labels_pre = np.array(batch_ys[0])[:,
+                                 stride_labels * (n_frames // 2):stride_labels * (n_frames // 2) + 128]
+                    labels_flat = (labels_pre - 1).flatten()  # gets 0/1 labels on 128 notes
                     predictions += list(pred_flat)
                     labels += list(labels_flat)
 

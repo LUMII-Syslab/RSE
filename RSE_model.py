@@ -604,10 +604,10 @@ class DNGPU:
         self.sat_loss = saturation * self.saturation_weight
         cost = self.base_cost + self.sat_loss
 
-        kl_terms = tf.get_collection('kl_terms')
-        kl_sum = tf.add_n(kl_terms) if kl_terms else 0.0
-        tf.summary.scalar("infoDrop", kl_sum)
-        cost+=kl_sum*0.0001
+        # kl_terms = tf.get_collection('kl_terms')
+        # kl_sum = tf.add_n(kl_terms) if kl_terms else 0.0
+        # tf.summary.scalar("infoDrop", kl_sum)
+        # cost+=kl_sum*0.0001
 
         tvars = [v for v in tf.trainable_variables()]
         for var in tvars:
