@@ -28,7 +28,7 @@ test_data_size = 1024
     Local storage (checkpoints, etc).
 """
 use_two_gpus = False
-gpu_instance = "1"
+gpu_instance = "0"
 out_dir = "/host-dir/gpu" + gpu_instance
 model_file = out_dir + "/varWeights.ckpt"
 image_path = out_dir + "/images"
@@ -66,6 +66,7 @@ musicnet_mmap_count = 500  # how many inputs to sample for partial training data
 musicnet_test_step = 1000  # each x steps partial validation tests are launched
 musicnet_full_test_step = 10000  # each x steps full validation test is launched
 musicnet_n_test_batches = 30  # n of batches for partial validation AveragePrecisionScore
+musicnet_visualise = False  # True to disable test data shuffling for visualisation
 
 """
     Lambada configuration
@@ -206,9 +207,9 @@ label_smoothing = 0.01
 embedding_size = 1
 max_test_length = 10000
 test_data_size = 10000
-musicnet_window_size = 4096  # 128 .. 8192
-training_iters = 800000 + 1
-batch_size = 32
+musicnet_window_size = 8192  # 128 .. 8192
+training_iters = 400000 + 1
+batch_size = 16
 n_Benes_blocks = 2
 bins = [musicnet_window_size]
 

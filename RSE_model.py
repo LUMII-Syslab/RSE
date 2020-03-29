@@ -289,12 +289,14 @@ class MusicNetLateralOrderedModel(ModelSpecific):
                 multi_class_labels=unflattened_labels[self.n_frames//2], logits=transformed_pred[self.n_frames//2], label_smoothing=self.__label_smoothing)
 
         # add some small loss for all entries to reduce the unused ones:
-        pred_others = prediction[:, 0:, :] - 4
-        loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
-                                                label_smoothing=(self.__label_smoothing + 0.1) / 2)
+        # pred_others = prediction[:, 0:, :] - 4
+        # loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
+        #                                         label_smoothing=(self.__label_smoothing + 0.1) / 2)
 
-        lateral_coef = 2 * 1/self.n_frames
-        total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
+        # lateral_coef = 2 * 1/self.n_frames
+        lateral_coef = 1
+        # total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
+        total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral) * lateral_coef
 
         return total_loss, loss_mid
 
