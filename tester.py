@@ -163,11 +163,11 @@ def run_test_musicnet():
                 print("Cutting {} input duplicates".format(n_overshoot))
                 print("Done testing on all {} test inputs".format(len(labels) / 128))
                 print("AVERAGE PRECISION SCORE on all test data = {0:.7f}".format(avg_prec_score))
-                print("Sampled predictions with labels:")
-                print("Predictions 1:", predictions[0:128])
-                print("Labels 1:", labels[0:128])
-                print("Predictions 2:", predictions[128:256])
-                print("Labels 2:", labels[128:256], "\n")
+                # print("Sampled predictions with labels:")
+                # print("Predictions 1:", predictions[0:128])
+                # print("Labels 1:", labels[0:128])
+                # print("Predictions 2:", predictions[128:256])
+                # print("Labels 2:", labels[128:256], "\n")
 
 
 def correct_answers_in_batch(target_batch, result_batch) -> int:

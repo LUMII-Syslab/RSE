@@ -38,24 +38,12 @@ def create_set(n_songs, stride, mode):
         else:
             x, y = data[test_IDs[i]]
 
-        # n_inputs = int((len(x) - fs - d) // stride + 1)  # number of sequences in the current song
-        # x_song = np.empty([n_inputs, d], dtype=data_type)
-        # y_song = np.zeros([n_inputs, d], dtype=data_type)  # zeros for padding
-        # y_song[:, :m] = 1
-        # for j in range(n_inputs):
-        #     s = fs + j * stride  # start from one second to give us some wiggle room for larger segments
-        #     x_song[j] = x[s:s + d]
-        #     for label in y[s + d / 2]:
-        #         y_song[j, label.data[1]] = 2  # note played
-
         n_inputs = int((len(x) - fs - d) // stride + 1)  # number of sequences in the current song
         stride_labels = stride_test
         n_frames = d // stride_labels - 1  # -1 to exclude the edges of the segment
         frame_positions = []  # positions of the labeled frames
         for i in range(n_frames):
             frame_positions += [stride_labels * (i + 1)]
-        # switch the midpoint labels to the beginning of the labels:
-        # frame_positions[0], frame_positions[1 + n_frames // 2] = frame_positions[1 + n_frames // 2], frame_positions[0]
         x_song = np.empty([n_inputs, d], dtype=data_type)
         y_song = np.zeros([n_inputs, d], dtype=data_type)  # zeros for padding
         y_song[:, :m * n_frames] = 1  # 1 for the non padded parts
@@ -72,6 +60,38 @@ def create_set(n_songs, stride, mode):
     np.save("musicnet_{}.npy".format(mode), xy_set)
 
 
-create_set(n_songs=len(train_IDs), stride=stride_train, mode="train")
-create_set(n_songs=len(validation_IDs), stride=stride_test, mode="validation")
-create_set(n_songs=len(test_IDs), stride=stride_test, mode="test")
+# create_set(n_songs=len(train_IDs), stride=stride_train, mode="train")
+# create_set(n_songs=len(validation_IDs), stride=stride_test, mode="validation")
+# create_set(n_songs=len(test_IDs), stride=stride_test, mode="test")
+
+
+def create_song(stride, song_ID):
+    """Create a set of input - label pairs."""
+    xy_set = []
+    x, y = data[song_ID]
+
+    # n_inputs = int((len(x) - fs - d) // stride + 1)  # number of sequences in the current song
+    n_inputs = int((len(x) - d) // stride + 1)  # number of sequences in the current song
+    stride_labels = stride_test
+    n_frames = d // stride_labels - 1  # -1 to exclude the edges of the segment
+    frame_positions = []  # positions of the labeled frames
+    for i in range(n_frames):
+        frame_positions += [stride_labels * (i + 1)]
+    x_song = np.empty([n_inputs, d], dtype=data_type)
+    y_song = np.zeros([n_inputs, d], dtype=data_type)  # zeros for padding
+    y_song[:, :m * n_frames] = 1  # 1 for the non padded parts
+    for j in range(n_inputs):
+        # s = fs + j * stride  # start from one second to give us some wiggle room for larger segments
+        s = j * stride
+        x_song[j] = x[s:s + d]
+        for count, label_pos in enumerate(frame_positions):
+            for label in y[s + label_pos]:
+                y_song[j, m * count + label.data[1]] = 2  # note played
+
+    xy_song = np.stack((x_song, y_song), axis=1)  # makes it [[[features],[labels]],..]
+    xy_set += list(xy_song)
+    xy_set = np.array(xy_set, dtype=data_type)
+    np.save("musicnet_{}.npy".format(song_ID), xy_set)
+
+for ID in test_IDs:
+    create_song(stride=stride_test, song_ID=ID)

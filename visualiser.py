@@ -67,7 +67,7 @@ BATCH_SIZE = 32
 def prepare_data_for_test():
     data_gen.init()
     task = data_gen.find_data_task(cnf.task)
-    task.prepare_test_data()
+    task.prepare_visualisation_data()
     data_gen.collect_bins()
     data_gen.print_bin_usage()
 
@@ -125,7 +125,7 @@ def run_visualiser_musicnet():
 
                 # preparing the visualisation data:
                 t_probe_start = 128 * 0
-                t_probe_len = 128 * 6000
+                t_probe_len = len(labels)
                 predictions = predictions[t_probe_start:t_probe_start + t_probe_len]
                 labels = labels[t_probe_start:t_probe_start + t_probe_len]
                 predictions = np.reshape(predictions, (-1, 128))

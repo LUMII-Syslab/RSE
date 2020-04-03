@@ -258,6 +258,7 @@ class MusicNetLateralOrderedModel(ModelSpecific):
         self.__target = target
         self.__n_classes = n_classes
         self.__label_smoothing = label_smoothing
+        # self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
         self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
         self.stride_labels = 128  # segment is labeled at positions with this stride
         self.n_frames = cnf.musicnet_window_size // self.stride_labels - 1  # -1 to exclude edges
@@ -289,14 +290,14 @@ class MusicNetLateralOrderedModel(ModelSpecific):
                 multi_class_labels=unflattened_labels[self.n_frames//2], logits=transformed_pred[self.n_frames//2], label_smoothing=self.__label_smoothing)
 
         # add some small loss for all entries to reduce the unused ones:
-        # pred_others = prediction[:, 0:, :] - 4
-        # loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
-        #                                         label_smoothing=(self.__label_smoothing + 0.1) / 2)
+        pred_others = prediction[:, 0:, :] - 4
+        loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
+                                                label_smoothing=(self.__label_smoothing + 0.1) / 2)
 
-        # lateral_coef = 2 * 1/self.n_frames
-        lateral_coef = 1
-        # total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
-        total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral) * lateral_coef
+        lateral_coef = 2 * 1/self.n_frames
+        # lateral_coef = 1
+        total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
+        # total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral) * lateral_coef
 
         return total_loss, loss_mid
 
@@ -429,6 +430,24 @@ class DNGPU:
             cur = self.pre_trained_embedding(x_in_indices)
         else:
             if cnf.task == "musicnet":
+                # # 0 convolutions
+                # cur = tf.expand_dims(x_in_indices, axis=-1)
+                # # cur = DCGRU.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
+                # if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:
+                #     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
+                # cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
+                # cur = RSE_network.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
+                # # cur = self.conv_pool_block2(cur, name='pool1')
+
+                # # 1 convolution
+                # cur = tf.expand_dims(x_in_indices, axis=-1)
+                # # cur = DCGRU.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
+                # if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:
+                #     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
+                # cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
+                # cur = self.conv_pool_block(cur, name='pool1')
+
+                # 2 convolutions
                 cur = tf.expand_dims(x_in_indices, axis=-1)
                 # cur = DCGRU.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
                 if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:

@@ -19,6 +19,7 @@
 # SOFTWARE.
 """Code for training the Residual Shuffle-Exchange model."""
 
+import sys
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '20'
 
@@ -78,6 +79,8 @@ with tf.Graph().as_default():
 
         current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
         run_name = "{time}_{task}".format(time=current_time, task=cnf.task)
+        if len(sys.argv) > 1:  # if run_name is passed as CL argument
+            run_name = str(sys.argv)[1]
         output_dir = os.path.join(cnf.out_dir, run_name)
         train_writer = tf.summary.FileWriter(output_dir)
 
@@ -98,6 +101,7 @@ with tf.Graph().as_default():
         avgRegul = 0
         acc = 1
         prev_loss = [1000000] * 7
+        # max_APS = 0
         start_time = time.time()
         batch_xs_long, batch_ys_long = data_supplier.supply_test_data(cnf.forward_max, cnf.batch_size)
         long_accuracy, _, _ = learner.get_accuracy(sess, batch_xs_long, batch_ys_long)
@@ -174,10 +178,6 @@ with tf.Graph().as_default():
                             predictions = predictions[:-(128 * n_overshoot)]
                             labels = labels[:-(128 * n_overshoot)]
                         print("Cutting {} input duplicates. Total inputs = {}".format(n_overshoot, len(labels) // 128))
-                        # if step % (cnf.musicnet_full_test_step * 5) == 0:
-                        #     np.save("saved_arrays_{}.npy".format(step),
-                        #             np.array([predictions, labels]))  # save label and prediction arrays
-                        #     print("Saved full validation predictions and labels")
                     avg_prec_scores[trial] = average_precision_score(labels, predictions)
                 for trial in range(n_trials):
                     print("Test {} - AVERAGE PRECISION SCORE = {:.5f}".format(trial, avg_prec_scores[trial]))
@@ -189,6 +189,9 @@ with tf.Graph().as_default():
                 print("")
                 if step % cnf.musicnet_full_test_step == 0:
                     full_APS = avg_prec_scores[0]
+                    # if full_APS > max_APS:
+                    #     saver.save(sess, os.path.join(cnf.out_dir, run_name, cnf.best_model_file))
+                    #     max_APS = full_APS
                     aps_test_summary.value.add(tag='test_APS/full_APS', simple_value=full_APS)
                     print("Predictions:", predictions[0:128])
                     print("Labels:", labels[0:128])

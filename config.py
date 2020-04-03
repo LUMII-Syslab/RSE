@@ -55,6 +55,7 @@ num_warmup_steps = 0
     MusicNet configuration
 """
 musicnet_data_dir = "/host-dir/musicnet"
+best_model_file = "/best_model/varWeights.ckpt"
 musicnet_vocab_size = 128  # number of labels (notes)
 
 # for data loading in musicnet.py:
@@ -207,9 +208,9 @@ label_smoothing = 0.01
 embedding_size = 1
 max_test_length = 10000
 test_data_size = 10000
-musicnet_window_size = 8192  # 128 .. 8192
+musicnet_window_size = 512  # 128 .. 8192
 training_iters = 400000 + 1
-batch_size = 16
+batch_size = 32
 n_Benes_blocks = 2
 bins = [musicnet_window_size]
 
