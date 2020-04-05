@@ -9,7 +9,7 @@ from sklearn.metrics import average_precision_score
 import config as cnf
 import data_feeder
 import data_utils as data_gen
-from RSE_model import DNGPU
+from RSE_model import RSE
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # use cpu only, to be able running in parallel with training
 os.environ["CUDA_VISIBLE_DEVICES"] = cnf.gpu_instance
@@ -163,11 +163,6 @@ def run_test_musicnet():
                 print("Cutting {} input duplicates".format(n_overshoot))
                 print("Done testing on all {} test inputs".format(len(labels) / 128))
                 print("AVERAGE PRECISION SCORE on all test data = {0:.7f}".format(avg_prec_score))
-                # print("Sampled predictions with labels:")
-                # print("Predictions 1:", predictions[0:128])
-                # print("Labels 1:", labels[0:128])
-                # print("Predictions 2:", predictions[128:256])
-                # print("Labels 2:", labels[128:256], "\n")
 
 
 def correct_answers_in_batch(target_batch, result_batch) -> int:
@@ -181,8 +176,8 @@ def correct_answers_in_batch(target_batch, result_batch) -> int:
 
 
 def create_tester(test_length):
-    learner = DNGPU(cnf.n_hidden, cnf.bins, cnf.n_input, [BATCH_SIZE], cnf.n_output, cnf.dropout_keep_prob,
-                    create_translation_model=cnf.task in cnf.language_tasks, use_two_gpus=cnf.use_two_gpus)
+    learner = RSE(cnf.n_hidden, cnf.bins, cnf.n_input, [BATCH_SIZE], cnf.n_output, cnf.dropout_keep_prob,
+                  create_translation_model=cnf.task in cnf.language_tasks, use_two_gpus=cnf.use_two_gpus)
     learner.create_test_graph(test_length)
     return learner
 

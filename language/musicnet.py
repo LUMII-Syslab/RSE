@@ -88,7 +88,7 @@ class Musicnet(LanguageTask):
         data_utils.test_set["musicnet"][self.window_size] = self.testing_set
 
     def prepare_visualisation_data(self):
-        loaded = np.load(self.data_dir + "/musicnet_2382.npy")
+        loaded = np.load(self.data_dir + MUSICNET_TEST)
         self.testing_set = self.crop(loaded)
         del loaded
         data_utils.test_set["musicnet"][self.window_size] = self.testing_set

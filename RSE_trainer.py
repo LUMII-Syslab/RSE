@@ -30,7 +30,7 @@ from sklearn.metrics import average_precision_score
 import numpy as np
 import config as cnf
 import data_utils as data_gen
-from RSE_model import DNGPU
+from RSE_model import RSE
 import data_feeder
 
 
@@ -65,8 +65,8 @@ data_supplier = data_feeder.create_data_supplier()
 
 # Perform training
 with tf.Graph().as_default():
-    learner = DNGPU(cnf.n_hidden, cnf.bins, cnf.n_input, countList, cnf.n_output, cnf.dropout_keep_prob,
-                    create_translation_model=cnf.task in cnf.language_tasks, use_two_gpus=cnf.use_two_gpus)
+    learner = RSE(cnf.n_hidden, cnf.bins, cnf.n_input, countList, cnf.n_output, cnf.dropout_keep_prob,
+                  create_translation_model=cnf.task in cnf.language_tasks, use_two_gpus=cnf.use_two_gpus)
     learner.create_graph()
     learner.variable_summaries = tf.summary.merge_all()
     tf.get_variable_scope().reuse_variables()
@@ -162,8 +162,6 @@ with tf.Graph().as_default():
                     for i in range(n_test_inputs // cnf.batch_size):
                         batch_xs_long, batch_ys_long = data_supplier.supply_test_data(cnf.forward_max, cnf.batch_size)
                         pred_flat = (learner.get_result(sess, batch_xs_long, batch_ys_long)).flatten()
-                        # labels_flat = (
-                        #         np.array(batch_ys_long[0])[:, :128] - 1).flatten()  # gets 0/1 labels on 128 notes
                         stride_labels = 128
                         n_frames = cnf.musicnet_window_size // stride_labels - 1
                         labels_pre = np.array(batch_ys_long[0])[:, stride_labels*(n_frames//2):stride_labels*(n_frames//2)+128]
@@ -189,9 +187,6 @@ with tf.Graph().as_default():
                 print("")
                 if step % cnf.musicnet_full_test_step == 0:
                     full_APS = avg_prec_scores[0]
-                    # if full_APS > max_APS:
-                    #     saver.save(sess, os.path.join(cnf.out_dir, run_name, cnf.best_model_file))
-                    #     max_APS = full_APS
                     aps_test_summary.value.add(tag='test_APS/full_APS', simple_value=full_APS)
                     print("Predictions:", predictions[0:128])
                     print("Labels:", labels[0:128])
@@ -231,7 +226,7 @@ while test_length < cnf.max_test_length:
     if test_length < 800: batchSize = 128
 
     with tf.Graph().as_default():
-        tester = DNGPU(cnf.n_hidden, [test_length], cnf.n_input, [batchSize], cnf.n_output, cnf.dropout_keep_prob)
+        tester = RSE(cnf.n_hidden, [test_length], cnf.n_input, [batchSize], cnf.n_output, cnf.dropout_keep_prob)
         tester.create_test_graph(test_length)
         saver = tf.train.Saver(tf.global_variables())
 

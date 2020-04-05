@@ -1,51 +1,4 @@
-# from pathlib import Path
-# import numpy as np
-
-# data_dir = str(Path("saved_arrays_300000.npy"))
-# loaded = np.load(str(data_dir))  # [[predictions],[labels]] = [[0.123, -0.321, ...],[0, 0, 1, ...]] 
-# t_probe_start = 128*6000
-# t_probe_len = 128*5
-
-# predictions = loaded[0][t_probe_start:t_probe_start+t_probe_len]
-# labels = loaded[1][t_probe_start:t_probe_start+t_probe_len]
-# predictions = np.reshape(predictions, (-1, 128))
-# labels = np.reshape(labels, (-1, 128))
-# predictions = np.transpose(predictions, axes=(1,0))
-# labels = np.transpose(labels, axes=(1,0))
-# print("Labels:")
-# for i in range(128):
-#     for j in range(t_probe_len//128):
-#         print("{} ".format(int(labels[i,j])), end="")
-#     print("")
-# print("Predictions:")
-# for i in range(128):
-#     for j in range(t_probe_len//128):
-#         print("{0:.5f} ".format(predictions[i,j]), end="")
-#     print("")
-
-# np.save("visualisation.npy", np.array([predictions, labels]))
-
-# data_dir = str(Path("visualisation.npy"))
-# loaded = np.load(str(data_dir))  # [[predictions],[labels]] = [[0.123, -0.321, ...],[0, 0, 1, ...]] 
-
-# predictions = loaded[0]
-# labels = loaded[1]
-# t_probe_len = len(labels[0])*128
-
-# # print(len(labels), len(labels[0]))
-# # print(labels[0])
-# print("Labels:")
-# for i in range(128):
-#     for j in range(t_probe_len//128):
-#         print("{} ".format(int(labels[i,j])), end="")
-#         pass
-#     print("")
-# print("Predictions:")
-# for i in range(128):
-#     for j in range(t_probe_len//128):
-#         print("{0:.5f} ".format(predictions[i,j]), end="")
-#         pass
-#     print("")
+"""Gets an array of predictions and labels on MusicNet test set"""
 
 import os
 
@@ -56,7 +9,7 @@ from sklearn.metrics import average_precision_score
 import data_feeder
 import config as cnf
 import data_utils as data_gen
-from RSE_model import DNGPU
+from RSE_model import RSE
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # use cpu only, to be able running in parallel with training
 os.environ["CUDA_VISIBLE_DEVICES"] = cnf.gpu_instance
@@ -132,23 +85,12 @@ def run_visualiser_musicnet():
                 labels = np.reshape(labels, (-1, 128))
                 predictions = np.transpose(predictions, axes=(1, 0))
                 labels = np.transpose(labels, axes=(1, 0))
-
-                print("Labels:")
-                for i in range(128):
-                    for j in range(70):
-                        print("{} ".format(int(labels[i, j])), end="")
-                    print("")
-                # print("Predictions:")
-                # for i in range(128):
-                #     for j in range(t_probe_len//128):
-                #         print("{0:.5f} ".format(predictions[i,j]), end="")
-                #     print("")
                 np.save("visualisation.npy", np.array([predictions, labels]))
 
 
 def create_tester(test_length):
-    learner = DNGPU(cnf.n_hidden, cnf.bins, cnf.n_input, [BATCH_SIZE], cnf.n_output, cnf.dropout_keep_prob,
-                    create_translation_model=cnf.task in cnf.language_tasks, use_two_gpus=cnf.use_two_gpus)
+    learner = RSE(cnf.n_hidden, cnf.bins, cnf.n_input, [BATCH_SIZE], cnf.n_output, cnf.dropout_keep_prob,
+                  create_translation_model=cnf.task in cnf.language_tasks, use_two_gpus=cnf.use_two_gpus)
     learner.create_test_graph(test_length)
     return learner
 

@@ -189,77 +189,12 @@ class MusicNetModel(ModelSpecific):
         return tf.sigmoid(self.transformed_prediction(prediction))
 
 
-class MusicNetLateralModel(ModelSpecific):
-    def __init__(self, target, n_classes, label_smoothing) -> None:
-        self.__target = target
-        self.__n_classes = n_classes
-        self.__label_smoothing = label_smoothing
-        self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
-        self.stride_labels = 128  # segment is labeled at positions with this stride
-        self.n_frames = cnf.musicnet_window_size // self.stride_labels - 1  # -1 to exclude edges
-
-    def transformed_prediction(self, prediction):
-        transformed_pred = []
-        for i in range(self.n_frames):
-            transformed_pred += [prediction[:, i*self.stride_labels//self.conv_downscale, :]-4]  # -4 to correct for class imbalance
-        return transformed_pred
-
-    def unflatten_labels(self):
-        unflattened_labels = []
-        for i in range(self.n_frames):
-            unflattened_labels += [self.__target[:, i*self.stride_labels:i*self.stride_labels+128]-1]  # -1 to get 0/1 labels
-        return unflattened_labels
-
-    def cost(self, prediction):
-        transformed_pred = self.transformed_prediction(prediction)
-        unflattened_labels = self.unflatten_labels()
-        loss_lateral = 0
-        for i in range(self.n_frames):
-            loss_lateral += tf.losses.sigmoid_cross_entropy(
-                multi_class_labels=unflattened_labels[i], logits=transformed_pred[i], label_smoothing=self.__label_smoothing)
-        loss_mid = tf.losses.sigmoid_cross_entropy(
-                multi_class_labels=unflattened_labels[0], logits=transformed_pred[0], label_smoothing=self.__label_smoothing)
-
-        # add some small loss for non-mid and unused entries
-        pred_others = prediction[:, 1:, :] - 4
-        loss_others = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_others), logits=pred_others,
-                                                label_smoothing=(self.__label_smoothing + 0.1) / 2)
-
-        lateral_coef = 2 * 1/self.n_frames
-        total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
-
-        return total_loss, loss_mid
-
-    def calibrated_result(self, prediction):
-        with tf.variable_scope("corrected_result"):
-            prediction = tf.stop_gradient(self.transformed_prediction(prediction)[0])
-            # scale to undo label smoothing
-            offset = tf.get_variable('offset', (prediction.shape[-1]), initializer=tf.zeros_initializer)
-            scale = tf.get_variable('scale', (prediction.shape[-1]), initializer=tf.ones_initializer)
-            prediction = prediction * scale + offset
-            labels = tf.cast(self.__target[:, :128] - 1, tf.float32)  # gets labels on 128 notes without padding
-            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=labels, logits=prediction)
-            corrected_result = tf.sigmoid(prediction)
-
-        return corrected_result, loss
-
-    def accuracy(self, prediction):
-        pred_1 = tf.sigmoid(self.transformed_prediction(prediction)[0])
-        labels_1 = tf.cast(self.__target[:, :128] - 1, tf.float32)  # gets labels on 128 notes without padding
-        accuracy = tf.cast(tf.equal(tf.round(pred_1), labels_1), tf.float32)
-        return tf.reduce_mean(accuracy)
-
-    def result(self, prediction):
-        return tf.sigmoid(self.transformed_prediction(prediction)[0])
-
-
 class MusicNetLateralOrderedModel(ModelSpecific):
     def __init__(self, target, n_classes, label_smoothing) -> None:
         self.__target = target
         self.__n_classes = n_classes
         self.__label_smoothing = label_smoothing
-        # self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
-        self.conv_downscale = 4  # conv_pool_block2 downscales 4 times
+        self.conv_downscale = 4  # 2x for each convolution
         self.stride_labels = 128  # segment is labeled at positions with this stride
         self.n_frames = cnf.musicnet_window_size // self.stride_labels - 1  # -1 to exclude edges
 
@@ -295,9 +230,7 @@ class MusicNetLateralOrderedModel(ModelSpecific):
                                                 label_smoothing=(self.__label_smoothing + 0.1) / 2)
 
         lateral_coef = 2 * 1/self.n_frames
-        # lateral_coef = 1
         total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral)*lateral_coef + tf.reduce_mean(loss_others) * 0.01
-        # total_loss = tf.reduce_mean(loss_mid) + tf.reduce_mean(loss_lateral) * lateral_coef
 
         return total_loss, loss_mid
 
@@ -326,7 +259,7 @@ class MusicNetLateralOrderedModel(ModelSpecific):
         return tf.sigmoid(self.transformed_prediction(prediction)[self.n_frames//2])
 
 
-class DNGPU:
+class RSE:
     def __init__(self, num_units, bins, n_input, count_list, n_classes, dropout_keep_prob,
                  create_translation_model=False, use_two_gpus=False):
         self.translation_model = create_translation_model
@@ -437,11 +370,9 @@ class DNGPU:
                 #     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
                 # cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
                 # cur = RSE_network.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
-                # # cur = self.conv_pool_block2(cur, name='pool1')
 
                 # # 1 convolution
                 # cur = tf.expand_dims(x_in_indices, axis=-1)
-                # # cur = DCGRU.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
                 # if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:
                 #     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
                 # cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
@@ -449,11 +380,18 @@ class DNGPU:
 
                 # 2 convolutions
                 cur = tf.expand_dims(x_in_indices, axis=-1)
-                # cur = DCGRU.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
                 if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:
                     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
                 cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
                 cur = self.conv_pool_block2(cur, name='pool1')
+
+                # # 3 convolutions
+                # cur = tf.expand_dims(x_in_indices, axis=-1)
+                # if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:
+                #     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
+                # cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
+                # cur = self.conv_pool_block3(cur, name='pool1')
+
             else:
                 cur = self.embedding(x_in_indices)
 
@@ -474,7 +412,6 @@ class DNGPU:
         if cnf.task == "lambada":
             model = LambadaModel(y_in, self.n_classes, cnf.label_smoothing)
         elif cnf.task == "musicnet":
-            # model = MusicNetModel(y_in, self.n_classes, cnf.label_smoothing)
             model = MusicNetLateralOrderedModel(y_in, self.n_classes, cnf.label_smoothing)
         else:
             model = DefaultModel(y_in, self.n_classes, cnf.label_smoothing)
@@ -624,11 +561,6 @@ class DNGPU:
 
         self.sat_loss = saturation * self.saturation_weight
         cost = self.base_cost + self.sat_loss
-
-        # kl_terms = tf.get_collection('kl_terms')
-        # kl_sum = tf.add_n(kl_terms) if kl_terms else 0.0
-        # tf.summary.scalar("infoDrop", kl_sum)
-        # cost+=kl_sum*0.0001
 
         tvars = [v for v in tf.trainable_variables()]
         for var in tvars:
