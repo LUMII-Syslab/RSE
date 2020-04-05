@@ -4,7 +4,7 @@ This repository contains the official _TensorFlow_ implementation of the followi
 
 >**Residual Shuffle-Exchange Networks for Fast Processing of Long Sequences**
 >
-> by Anonymous Authors
+> by Andis Draguns, Emīls Ozoliņš, Agris Šostaks, Matīss Apinis, Kārlis Freivalds
 >
 >Abstract: _Attention is a commonly used mechanism in sequence processing, but it is of O(n²) complexity which prevents its application to long sequences. The recently introduced neural Shuffle-Exchange network offers a computation-efficient alternative, enabling the modelling of long-range dependencies in O(n log n) time. The model, however, is quite complex, involving a sophisticated gating mechanism derived from the Gated Recurrent Unit._
 >
@@ -28,7 +28,7 @@ Here are the accuracy results on the _[MusicNet](https://homes.cs.washington.edu
 | _Deep Real Network_ | 10.0 | 69.8 |
 | _Deep Complex Network_ | 17.14 | 72.9 |
 | _Complex Transformer_ | 11.61 | 74.22 |
-| **Residual Shuffle-Exchange network** | **3.06** | **76.84** |
+| **Residual Shuffle-Exchange network** | **3.06** | **78.02** |
 
 Note: Our used model achieves state-of-the-art performance using significantly fewer parameters and the audio waveform directly compared to the previous two contenders that used specialised architectures with complex number representations of the Fourier-transformed waveform.
 
@@ -99,7 +99,7 @@ rm musicnet.npz
 python3 -u parse_file.py
 rm musicnet_11khz.npz
 ```
-This might take a while. After parsing the file, make sure that config.py contains the correct directory for the _MusicNet_ data.
+This might take a while. After parsing the file, make sure that config.py contains the correct directory for the _MusicNet_ data. To test the trained model for the _MusicNet_ task on the test set, run tester.py. 
 
 For the _LAMBADA_ question answering task see the following:
 ```
