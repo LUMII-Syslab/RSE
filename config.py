@@ -101,10 +101,10 @@ all_tasks = {"sort", "kvsort", "id", "rev", "rev2", "incr", "add", "left",
 language_tasks = {"lambada", "musicnet"}
 
 # suggested settings for binary addition
-# task = "badd"
-# n_input = 13  # range of input digits
-# n_output = 4  # range of output digits
-# n_hidden = 48 * 4  # number of maps
+task = "badd"
+n_input = 13  # range of input digits
+n_output = 4  # range of output digits
+n_hidden = 48 * 4  # number of maps
 
 # suggested settings for rotation
 # task = "rol"
@@ -198,21 +198,21 @@ language_tasks = {"lambada", "musicnet"}
 # batch_size = 64
 # bins = [256]
 
-task = "musicnet"
-input_type = tf.float32
-n_input = musicnet_vocab_size
-n_output = musicnet_vocab_size
-n_hidden = 48 * 4
-input_word_dropout_keep_prob = 1.0
-label_smoothing = 0.01
-embedding_size = 1
-max_test_length = 10000
-test_data_size = 10000
-musicnet_window_size = 8192  # 128 .. 8192
-training_iters = 800000 + 1
-batch_size = 16
-n_Benes_blocks = 2
-bins = [musicnet_window_size]
+# task = "musicnet"
+# input_type = tf.float32
+# n_input = musicnet_vocab_size
+# n_output = musicnet_vocab_size
+# n_hidden = 48 * 4
+# input_word_dropout_keep_prob = 1.0
+# label_smoothing = 0.01
+# embedding_size = 1
+# max_test_length = 10000
+# test_data_size = 10000
+# musicnet_window_size = 256  # 128 .. 8192
+# training_iters = 800000 + 1
+# batch_size = 32
+# n_Benes_blocks = 2
+# bins = [musicnet_window_size]
 
 initial_learning_rate = 0.00125 * np.sqrt(96 / n_hidden)
 min_learning_rate = initial_learning_rate
