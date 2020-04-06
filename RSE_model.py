@@ -146,54 +146,6 @@ class MusicNetModel(ModelSpecific):
         self.__target = target
         self.__n_classes = n_classes
         self.__label_smoothing = label_smoothing
-
-    def transformed_prediction(self, prediction):
-        pred_1 = prediction[:, 0, :]  # gets 'note is played' predictions on 128 notes without padding
-        pred_1 -= 4  # correct for class imbalance
-        return pred_1
-
-    def cost(self, prediction):
-        pred_1 = self.transformed_prediction(prediction)
-        labels_1 = tf.cast(self.__target[:, :128] - 1, tf.float32)  # gets labels on 128 notes without padding
-        loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=labels_1, logits=pred_1,
-                                               label_smoothing=self.__label_smoothing)
-
-        # add some small loss for unused entries
-        pred_2 = prediction[:, 1:, :] - 4
-        loss2 = tf.losses.sigmoid_cross_entropy(multi_class_labels=tf.zeros_like(pred_2), logits=pred_2,
-                                                label_smoothing=(self.__label_smoothing + 0.1) / 2)
-        total_loss = tf.reduce_mean(loss) + tf.reduce_mean(loss2) * 0.01
-
-        return total_loss, loss
-
-    def calibrated_result(self, prediction):
-        with tf.variable_scope("corrected_result"):
-            prediction = tf.stop_gradient(self.transformed_prediction(prediction))
-            # scale to undo label smoothing
-            offset = tf.get_variable('offset', (prediction.shape[-1]), initializer=tf.zeros_initializer)
-            scale = tf.get_variable('scale', (prediction.shape[-1]), initializer=tf.ones_initializer)
-            prediction = prediction * scale + offset
-            labels_1 = tf.cast(self.__target[:, :128] - 1, tf.float32)  # gets labels on 128 notes without padding
-            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=labels_1, logits=prediction)
-            corrected_result = tf.sigmoid(prediction)
-
-        return corrected_result, loss
-
-    def accuracy(self, prediction):
-        pred_1 = tf.sigmoid(self.transformed_prediction(prediction))
-        labels_1 = tf.cast(self.__target[:, :128] - 1, tf.float32)  # gets labels on 128 notes without padding
-        accuracy = tf.cast(tf.equal(tf.round(pred_1), labels_1), tf.float32)
-        return tf.reduce_mean(accuracy)
-
-    def result(self, prediction):
-        return tf.sigmoid(self.transformed_prediction(prediction))
-
-
-class MusicNetLateralOrderedModel(ModelSpecific):
-    def __init__(self, target, n_classes, label_smoothing) -> None:
-        self.__target = target
-        self.__n_classes = n_classes
-        self.__label_smoothing = label_smoothing
         self.conv_downscale = 4  # 2x for each convolution
         self.stride_labels = 128  # segment is labeled at positions with this stride
         self.n_frames = cnf.musicnet_window_size // self.stride_labels - 1  # -1 to exclude edges
@@ -202,16 +154,12 @@ class MusicNetLateralOrderedModel(ModelSpecific):
         transformed_pred = []
         for i in range(self.n_frames):
             transformed_pred += [prediction[:, i*self.stride_labels//self.conv_downscale, :]-4]  # -4 to correct for class imbalance
-        # for ordered lateral labels:
-        # transformed_pred[0], transformed_pred[1 + self.n_frames // 2] = transformed_pred[1 + self.n_frames // 2], transformed_pred[0]
         return transformed_pred
 
     def unflatten_labels(self):
         unflattened_labels = []
         for i in range(self.n_frames):
             unflattened_labels += [self.__target[:, i*self.stride_labels:i*self.stride_labels+128]-1]  # -1 to get 0/1 labels
-        # for ordered lateral labels:
-        # unflattened_labels[0], unflattened_labels[1 + self.n_frames // 2] = unflattened_labels[1 + self.n_frames // 2], unflattened_labels[0]
         return unflattened_labels
 
     def cost(self, prediction):
@@ -255,7 +203,7 @@ class MusicNetLateralOrderedModel(ModelSpecific):
         return tf.reduce_mean(accuracy)
 
     def result(self, prediction):
-        # return predictions for mid
+        # return predictions for the middle element
         return tf.sigmoid(self.transformed_prediction(prediction)[self.n_frames//2])
 
 
@@ -412,7 +360,7 @@ class RSE:
         if cnf.task == "lambada":
             model = LambadaModel(y_in, self.n_classes, cnf.label_smoothing)
         elif cnf.task == "musicnet":
-            model = MusicNetLateralOrderedModel(y_in, self.n_classes, cnf.label_smoothing)
+            model = MusicNetModel(y_in, self.n_classes, cnf.label_smoothing)
         else:
             model = DefaultModel(y_in, self.n_classes, cnf.label_smoothing)
 
