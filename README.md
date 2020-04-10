@@ -183,3 +183,9 @@ emb_vector_file = base_folder + "emb_vectors.bin"
 emb_word_dictionary = base_folder + "word_dict.bin"
 ...
 ```
+
+## Contact information
+
+For help or issues using _Residual Shuffle-Exchange networks_, please submit a _GitHub_ issue.
+
+For personal communication related to _Residual Shuffle-Exchange networks_, please contact Kārlis Freivalds ([karlis.freivalds@lumii.lv](mailto:karlis.freivalds@lumii.lv)).
