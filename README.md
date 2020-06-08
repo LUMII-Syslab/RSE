@@ -34,6 +34,7 @@ Here are the accuracy results on the _[MusicNet](https://homes.cs.washington.edu
 
 Note: Our used model achieves state-of-the-art performance using significantly fewer parameters and the audio waveform directly compared to the previous two contenders that used specialised architectures with complex number representations of the Fourier-transformed waveform.
 
+For a brief demonstration of our model's SOTA performance on MusicNet, see _[this video](https://youtu.be/RAu2p9xZiM4)_ on YouTube.
 
 Here are the accuracy results on the _[LAMBADA](https://www.aclweb.org/anthology/P16-1144)_ question answering task of predicting a target word in its broader context (on average 4.6 sentences picked from novels):
 
