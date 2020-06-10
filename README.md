@@ -18,6 +18,12 @@ This repository contains the official _TensorFlow_ implementation of the followi
 
 _Residual Shuffle-Exchange networks_ are a simpler and faster replacement for the recently proposed _Neural Shuffle-Exchange network_ architecture. It has O(*n* log *n*) complexity and enables processing of sequences up to a length of 2 million symbols where standard methods fail (e.g., attention mechanisms). The _Residual Shuffle-Exchange_ can serve as a useful building block for long sequence processing applications.
 
+# Demo
+
+Click the gif to see the _[full video](https://youtu.be/RAu2p9xZiM4)_ on YouTube:
+
+<a href="https://youtu.be/RAu2p9xZiM4"><img src="https://github.com/LUMII-Syslab/RSE/blob/master/assets/MusicnetDemo.gif" width="320" height="240"/></a>
+
 # Preview of results
 
 Our paper describes _Residual Shuffle-Exchange networks_ in detail and provides full results on long binary addition, long binary multiplication, sorting tasks, the _LAMBADA_ question answering task and multi-instrument musical note recognition using the _MusicNet_ dataset.
@@ -33,8 +39,6 @@ Here are the accuracy results on the _[MusicNet](https://homes.cs.washington.edu
 | **Residual Shuffle-Exchange network** | **3.06** | **78.02** |
 
 Note: Our used model achieves state-of-the-art performance using significantly fewer parameters and the audio waveform directly compared to the previous two contenders that used specialised architectures with complex number representations of the Fourier-transformed waveform.
-
-For a brief demonstration of our model's SOTA performance on MusicNet, see _[this video](https://youtu.be/RAu2p9xZiM4)_ on YouTube.
 
 Here are the accuracy results on the _[LAMBADA](https://www.aclweb.org/anthology/P16-1144)_ question answering task of predicting a target word in its broader context (on average 4.6 sentences picked from novels):
 
