@@ -10,9 +10,9 @@ This repository contains the official _TensorFlow_ implementation of the followi
 >
 >Abstract: _Attention is a commonly used mechanism in sequence processing, but it is of O(n²) complexity which prevents its application to long sequences. The recently introduced neural Shuffle-Exchange network offers a computation-efficient alternative, enabling the modelling of long-range dependencies in O(n log n) time. The model, however, is quite complex, involving a sophisticated gating mechanism derived from the Gated Recurrent Unit._
 >
->_In this paper, we present a simple and lightweight variant of the Shuffle-Exchange network, which is based on a residual network employing GELU and Layer Normalization. The proposed architecture not only scales to longer sequences but also converges faster and provides better accuracy. It surpasses Shuffle-Exchange network on the LAMBADA language modelling task and achieves state-of-the-art performance on the MusicNet dataset for music transcription while using significantly fewer parameters._
+>_In this paper, we present a simple and lightweight variant of the Shuffle-Exchange network, which is based on a residual network employing GELU and Layer Normalization. The proposed architecture not only scales to longer sequences but also converges faster and provides better accuracy. It surpasses the Shuffle-Exchange network on the LAMBADA language modelling task and achieves state-of-the-art performance on the MusicNet dataset for music transcription while being efficient in the number of parameters._
 >
->_We show how to combine Shuffle-Exchange network with convolutional layers establishing it as a useful building block in long sequence processing applications._
+>_We show how to combine the improved Shuffle-Exchange network with convolutional layers, establishing it as a useful building block in long sequence processing applications._
 
 # Introduction
 
@@ -34,11 +34,12 @@ Here are the accuracy results on the _[MusicNet](https://homes.cs.washington.edu
 | ------ | ------ | ------ |
 | _cgRNN_ | 2.36 | 53.0 |
 | _Deep Real Network_ | 10.0 | 69.8 |
-| _Deep Complex Network_ | 17.14 | 72.9 |
+| _Deep Complex Network_ | 8.8 | 72.9 |
 | _Complex Transformer_ | 11.61 | 74.22 |
+| _Translation-invariant net_ | unknown | 77.3 |
 | **Residual Shuffle-Exchange network** | **3.06** | **78.02** |
 
-Note: Our used model achieves state-of-the-art performance using significantly fewer parameters and the audio waveform directly compared to the previous two contenders that used specialised architectures with complex number representations of the Fourier-transformed waveform.
+Note: Our used model achieves state-of-the-art performance while being efficient in the number of parameters using the audio waveform directly compared to the previous state-of-the-art models that used specialised architectures with complex number representations of the Fourier-transformed waveform.
 
 Here are the accuracy results on the _[LAMBADA](https://www.aclweb.org/anthology/P16-1144)_ question answering task of predicting a target word in its broader context (on average 4.6 sentences picked from novels):
 
@@ -49,8 +50,8 @@ Here are the accuracy results on the _[LAMBADA](https://www.aclweb.org/anthology
 | _Neural Shuffle-Exchange network_ | 33 | 52.28 |
 | **Residual Shuffle-Exchange network** | **11** | **54.34** |
 | _Universal Transformer_ | 152 | 56.0 |
-| _GPT-2_ | 1542 | 63.24 |
 | Human performance | - | 86.0 |
+| _GPT-3_ | 175000 | 86.4 |
 
 Note: Our used model works faster and can be evaluated on 4 times longer sequences using the same amount of GPU memory compared to the _Shuffle-Exchange network_ model and on 128 times longer sequences than the _Universal Transformer_ model.
 
