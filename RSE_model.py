@@ -289,8 +289,7 @@ class RSE:
             n_maps2 = self.num_units
             n_maps3 = self.num_units * 2
 
-            cur = RSE_network.conv_linear(cur, kernel_width, self.embedding_size, n_maps1, 0.0, "conv1", add_bias=False,
-                                          stride=2)
+            cur = RSE_network.conv_linear(cur, kernel_width, self.embedding_size, n_maps1, 0.0, "conv1", add_bias=False, stride=2)
             cur = RSE_network.layer_norm(cur, "norm1")
             cur = RSE_network.gelu(cur)
             cur = RSE_network.conv_linear(cur, kernel_width, n_maps1, n_maps2, 0.0, "conv2", add_bias=False, stride=2)
@@ -313,7 +312,6 @@ class RSE:
             if cnf.task == "musicnet":
                 # # 0 convolutions
                 # cur = tf.expand_dims(x_in_indices, axis=-1)
-                # # cur = DCGRU.conv_linear(cur, 1, 1, self.num_units, 0.0, "output_conv")
                 # if cnf.input_word_dropout_keep_prob < 1 and RSE_network.is_training:
                 #     cur = tf.nn.dropout(cur, cnf.input_word_dropout_keep_prob, noise_shape=[batch_size, length, 1])
                 # cur = RSE_network.add_noise_add(cur, 0.001)  # to help layernorm with zero inputs
@@ -469,7 +467,7 @@ class RSE:
         tf.summary.scalar("base/error_longest", 1 - a)
         tf.summary.histogram("logits", logits)
 
-        if cnf.task is not "musicnet":
+        if cnf.task != "musicnet":
             if RSE_network.gate_mem:
                 gate_img = tf.stack(RSE_network.gate_mem)
                 gate_img = gate_img[:, 0:1, :, :]
@@ -573,6 +571,7 @@ class RSE:
 
     def get_result(self, sess, batch_xs_list, batch_ys_list):
         """For musicnet. Gets flat labels/predictions on the given test examples"""
+        # the predictions and labels are only for the middle element of each window
         feed_dict = self.prepare_test_dict(batch_xs_list, batch_ys_list)
         result = sess.run(self.result, feed_dict=feed_dict)
         return result

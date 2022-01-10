@@ -1,63 +1,56 @@
-"""
-Code for loading the parsed MusicNet dataset.
-"""
+"""Code for loading the parsed MusicNet dataset"""
 
-import copy
-from pathlib import Path
-
+import os
 import numpy as np
+from subprocess import run
 
 import config as cnf
 import data_utils
 from language.utils import LanguageTask
 
-MUSICNET_TRAIN = "/musicnet_train.npy"
-MUSICNET_VALIDATION = "/musicnet_validation.npy"
-MUSICNET_TEST = "/musicnet_test.npy"
-INPUT_LENGTH = 8192  # non-cropped window size
+str_fourier = f"fourier{cnf.musicnet_fourier_multiplier}" if cnf.musicnet_do_fourier_transform else "raw"
+MUSICNET_TRAIN = f"musicnet_data/musicnet_{str_fourier}_train_{cnf.musicnet_file_window_size}.npy"
+MUSICNET_VALIDATION = f"musicnet_data/musicnet_{str_fourier}_validation_{cnf.musicnet_file_window_size}.npy"
+MUSICNET_TEST = f"musicnet_data/musicnet_{str_fourier}_test_{cnf.musicnet_file_window_size}.npy"
+
+def get_parsed_musicnet():
+    print("No training set found that matches config.py. Getting musicnet and parsing it.")
+    run(["python3", "musicnet_data/get_musicnet.py"])  # download musicnet if it is missing
+    run(["python3", "musicnet_data/parse_file.py"])  # parse file so it can be processed by the model
 
 
 class Musicnet(LanguageTask):
     def __init__(self) -> None:
         self.window_size = cnf.musicnet_window_size  # how long is one input sequence (e.g. 2048)
         self.mmap_count = cnf.musicnet_mmap_count  # how many inputs there are in mmap partial load
-        self.data_dir = str(Path(cnf.musicnet_data_dir))
         self.training_set = []
         self.validation_set = []
         self.testing_set = []
+        if not os.path.exists(MUSICNET_TRAIN):
+            get_parsed_musicnet()
 
     def crop(self, xy_set):
         """Crop data to a smaller sized window."""
-        midpoint = INPUT_LENGTH // 2
+        midpoint = cnf.musicnet_file_window_size // 2
         half_window = self.window_size // 2
-        inputs = np.expand_dims(xy_set[:, 0, midpoint - half_window:midpoint + half_window], axis=1)
-        labels = np.expand_dims(xy_set[:, 1, midpoint - half_window:midpoint + half_window], axis=1)  # crops padding
-        result = np.concatenate((inputs, labels), axis=1)
-        return list(result)  # returns [[[inputs1],[labels1]],..] (,2,wsize)
+        result = xy_set[:, :, midpoint - half_window:midpoint + half_window]
+        return list(result)  # returns [[[inputs1],[labels1]],..] (,2,window_size)
 
     def load_training_dataset(self):
-        loaded = np.load(str(self.data_dir) + MUSICNET_TRAIN)
+        loaded = np.load(MUSICNET_TRAIN)
         self.training_set = self.crop(loaded)
         del loaded
 
     def sample_training_dataset_mmap(self):
-        loaded = np.load(self.data_dir + MUSICNET_TRAIN, mmap_mode='r')
-        mmap_window = self.mmap_count // 100  # samples from 100 indices
-        indices = np.random.randint(low=0, high=len(loaded) - mmap_window, size=100)
+        n_sample_locations = self.mmap_count
+        loaded = np.load(MUSICNET_TRAIN, mmap_mode='r')
+        mmap_window = self.mmap_count // n_sample_locations
+        indices = np.random.randint(low=0, high=len(loaded) - mmap_window, size=n_sample_locations)
         training_set_tmp = []
-        for i in range(100):
+        for i in range(n_sample_locations):
             training_set_tmp += list(loaded[indices[i]:indices[i] + mmap_window])
         self.training_set = self.crop(np.array(training_set_tmp, dtype='float32'))
         del loaded
-
-    def load_training_dataset_mmap(self):
-        self.training_set = []
-        for i in range(10):
-            loaded = np.load(self.data_dir + MUSICNET_TRAIN, mmap_mode='r')
-            part_size = 1 + len(loaded) // 10  # +1 to include all data
-            self.training_set += copy.deepcopy(self.crop(loaded[i * part_size:(i + 1) * part_size]))
-            print("Loaded training set part {}".format(i + 1), flush=True)
-            del loaded
 
     def prepare_data(self):
         print("Loading the dataset", flush=True)
@@ -66,29 +59,26 @@ class Musicnet(LanguageTask):
         data_utils.reset_counters()
 
     def prepare_train_data(self):
-        if cnf.musicnet_mmap_load:
-            self.load_training_dataset_mmap()
-        elif cnf.musicnet_mmap_partial:
+        if cnf.musicnet_subset:
             self.sample_training_dataset_mmap()
         else:
             self.load_training_dataset()
         data_utils.train_set["musicnet"][self.window_size] = self.training_set
 
     def prepare_validation_data(self):
-        loaded = np.load(self.data_dir + MUSICNET_VALIDATION)
+        loaded = np.load(MUSICNET_VALIDATION)
         self.validation_set = self.crop(loaded)
         del loaded
-        np.random.shuffle(self.validation_set)  # because data_utils doesn't shuffle it
         data_utils.test_set["musicnet"][self.window_size] = self.validation_set
 
     def prepare_test_data(self):
-        loaded = np.load(self.data_dir + MUSICNET_TEST)
+        loaded = np.load(MUSICNET_TEST)
         self.testing_set = self.crop(loaded)
         del loaded
         data_utils.test_set["musicnet"][self.window_size] = self.testing_set
 
-    def prepare_visualisation_data(self):
-        loaded = np.load(self.data_dir + MUSICNET_TEST)
+    def prepare_inference_data(self, inference_file_path):
+        loaded = np.load(inference_file_path)
         self.testing_set = self.crop(loaded)
         del loaded
         data_utils.test_set["musicnet"][self.window_size] = self.testing_set

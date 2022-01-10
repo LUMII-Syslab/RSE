@@ -6,7 +6,7 @@ This repository contains the official _TensorFlow_ implementation of the followi
 >
 > by Andis Draguns, Emīls Ozoliņš, Agris Šostaks, Matīss Apinis, Kārlis Freivalds
 >
-> [[arXiv](https://arxiv.org/abs/2004.04662)]
+> [[AAAI](https://ojs.aaai.org/index.php/AAAI/article/view/16890)] [[arXiv](https://arxiv.org/abs/2004.04662)] [[BibTeX](#citing-residual-shuffle-exchange-networks)]
 >
 >Abstract: _Attention is a commonly used mechanism in sequence processing, but it is of O(n²) complexity which prevents its application to long sequences. The recently introduced neural Shuffle-Exchange network offers a computation-efficient alternative, enabling the modelling of long-range dependencies in O(n log n) time. The model, however, is quite complex, involving a sophisticated gating mechanism derived from the Gated Recurrent Unit._
 >
@@ -16,7 +16,7 @@ This repository contains the official _TensorFlow_ implementation of the followi
 
 # Introduction
 
-_Residual Shuffle-Exchange networks_ are a simpler and faster replacement for the recently proposed _Neural Shuffle-Exchange network_ architecture. It has O(*n* log *n*) complexity and enables processing of sequences up to a length of 2 million symbols where standard methods fail (e.g., attention mechanisms). The _Residual Shuffle-Exchange_ can serve as a useful building block for long sequence processing applications.
+_Residual Shuffle-Exchange networks_ are a simpler and faster replacement for the recently proposed _Neural Shuffle-Exchange network_ architecture. It has O(*n* log *n*) complexity and enables processing of sequences up to a length of 2 million symbols where standard methods fail (e.g., attention mechanisms). The _Residual Shuffle-Exchange network_ can serve as a useful building block for long sequence processing applications.
 
 # Demo
 
@@ -28,7 +28,7 @@ Click the gif to see the _[full video](https://youtu.be/RAu2p9xZiM4)_ on YouTube
 
 Our paper describes _Residual Shuffle-Exchange networks_ in detail and provides full results on long binary addition, long binary multiplication, sorting tasks, the _LAMBADA_ question answering task and multi-instrument musical note recognition using the _MusicNet_ dataset.
 
-Here are the accuracy results on the _[MusicNet](https://homes.cs.washington.edu/~thickstn/musicnet.html)_ transcription task of identifying the musical notes performed from audio waveforms (freely-licensed classical music recordings):
+Here are the accuracy results on the _[MusicNet](https://zenodo.org/record/5120004)_ transcription task of identifying the musical notes performed from audio waveforms (freely-licensed classical music recordings):
 
 | **Model** | **Learnable parameters (M)** | **Average precision score (%)** |
 | ------ | ------ | ------ |
@@ -57,7 +57,7 @@ Note: Our used model works faster and can be evaluated on 4 times longer sequenc
 
 # What are _Residual Shuffle-Exchange networks_?
 
-_Residual Shuffle-Exchange networks_ are a lightweight variant of the continuous, differentiable neural networks with a regular-layered structure consisting of alternating _Switch_ and _Shuffle_ layers that are _[Shuffle-Exchange networks](https://github.com/LUMII-Syslab/shuffle-exchange/blob/master/README.md)_.
+_Residual Shuffle-Exchange networks_ are a lightweight variant of the continuous, differentiable neural networks with a regular-layered structure consisting of alternating _Switch_ and _Shuffle_ layers that are _[Shuffle-Exchange networks](https://github.com/LUMII-Syslab/shuffle-exchange)_.
 
 The _Switch Layer_ divides the input into adjacent pairs of values and applies a _Residual Switch Unit_, a learnable 2-to-2 function, to each pair of inputs producing two outputs, employing _GELU_ and _Layer Normalization_.
 
@@ -74,70 +74,56 @@ Here is an illustration of a whole _Residual Shuffle-Exchange network_ model con
 **![](assets/readme-residual_shuffle_exchange_model.png)**
 
 
+# Running the experiments
+
+Running the experiments requires the dependencies to be installed and the following system requirements.
+
 ## System requirements
 
 - _Python_ 3.6 or higher.
 - _TensorFlow_ 1.14.0.
 
-## Running the experiments
+## Training
 
-To start training the _Residual Shuffle-Exchange network_ on binary addition, run the terminal command:
+To start training the _Residual Shuffle-Exchange network_, run the terminal command:
 ```
-python3 RSE_trainer.py
+python3 trainer.py
 ```
 
-To select the sequence processing task for which to train the _Residual Shuffle-Exchange network_ edit the `config.py` file that contains various hyperparameter and other suggested setting options.
+By default it will train on the binary addition task. To select the sequence processing task for which to train the _Residual Shuffle-Exchange network_, edit the `config.py` file that contains various hyperparameter and setting options.
 
-For the _MusicNet_ transcription task see the following:
+## Music transcription
+
+For the _MusicNet_ music transcription task uncomment the corresponding settings in `config.py`:
 ```
-...
-"""
-    Task configuration.
-"""
-...
+"""Recommended settings for MusicNet"""
 # task = "musicnet"
-# input_type = tf.float32
+# n_Benes_blocks = 2  # depth of the model
 ...
 ```
-To download and parse the _MusicNet_ dataset, run:
-```
-wget https://homes.cs.washington.edu/~thickstn/media/musicnet.npz 
-python3 -u resample.py musicnet.npz musicnet_11khz.npz 44100 11000
-rm musicnet.npz 
-python3 -u parse_file.py
-rm musicnet_11khz.npz
-```
-This might take a while. After parsing the file, make sure that config.py contains the correct directory for the _MusicNet_ data. To test the trained model for the _MusicNet_ task on the test set, run tester.py. 
+If you have not downloaded and parsed the _MusicNet_, running trainer.py will do it automatically if `task` is set to `'musicnet'` in `config.py`. This might take a while. If you run out of RAM (it can take more than 40GB), you can download `musicnet.npz` from [Kaggle](https://www.kaggle.com/imsparsh/musicnet-dataset/version/1?select=musicnet.npz) and place it in the `musicnet_data` directory.
 
-For the _LAMBADA_ question answering task see the following:
+If you have enough RAM to load the entire dataset (can be more than 128GB), set `musicnet_subset` to `False` for faster training. Increasing `musicnet_window_size` requires more RAM and trains slower but produces greater accuracy.
+
+To test the trained model for the _MusicNet_ task on the test set, run `tester.py`. To transcribe a custom wav file to MIDI, run:
 ```
-...
-"""
-    Task configuration.
-"""
-...
+python3 transcribe.py yourwavfile.wav
+```
+
+## _LAMBADA_ task
+
+For the _LAMBADA_ question answering task uncomment the corresponding settings in `config.py`:
+```
+"""Recommended settings for lambada"""
 # task = "lambada"
 # n_input = lambada_vocab_size
-# n_output = 3
-# n_hidden = 48*8
-# #input_dropout_keep_prob = 1.0
-# input_word_dropout_keep_prob = 0.95
-# use_front_padding = True
-# use_pre_trained_embedding = True
-# disperse_padding = False
-# label_smoothing = 0.1
-# batch_size = 64
-# bins = [256]
 ...
 ```
 To download the _LAMBADA_ dataset see the original publication by [Paperno et al](https://www.aclweb.org/anthology/P16-1144).
 
 To download the pre-trained _fastText_ 1M English word embedding see the [downloads section](https://fasttext.cc/docs/en/english-vectors.html) of the _FastText_ library website and extract to directory listed in the `config.py` file variable `base_folder` under “Embedding configuration”:
 ```
-...
-"""
-    Embedding configuration
-"""
+"""Embedding configuration"""
 use_pre_trained_embedding = False
 base_folder = "/host-dir/embeddings/"
 embedding_file = base_folder + "fast_word_embedding.vec"
@@ -146,51 +132,38 @@ emb_word_dictionary = base_folder + "word_dict.bin"
 ...
 ```
 
-To enable the pre-trained embedding change the `config.py` file variable `use_pre_trained_embedding` to `True`:
-```
-...
-use_pre_trained_embedding = True
-...
-```
+To enable the pre-trained embedding change the `config.py` file variable `use_pre_trained_embedding` to `True`.
 
-To start training the _Residual Shuffle-Exchange network_ use the terminal command:
-```
-python3 DNGPU_trainer.py
-```
+## Windows
 
-If you're running _Windows_, before starting training the _Residual Shuffle-Exchange network_ edit the `config.py` file to change the directory-related variables to _Windows_ file path format:
+If you are running _Windows_, before starting training the _Residual Shuffle-Exchange network_ edit the `config.py` file to change the directory-related variables to _Windows_ file path format in the following way:
 ```
 ...
-"""
-    Local storage (checkpoints, etc).
-"""
+"""Local storage (checkpoints, etc)"""
 ...
 out_dir = ".\host-dir\gpu" + gpu_instance
 model_file = out_dir + "\\varWeights.ckpt"
 image_path = out_dir + "\\images"
 ...
-"""
-    MusicNet configuration
-"""
-musicnet_data_dir = ".\host-dir\musicnet\musicnet"
-...
-"""
-    Lambada configuration
-"""
-lambada_data_dir = ".\host-dir\lambada-dataset"
-...
-"""
-    Embedding configuration
-"""
-...
-base_folder = ".\host-dir\embeddings"
-embedding_file = base_folder + "fast_word_embedding.vec"
-emb_vector_file = base_folder + "emb_vectors.bin"
-emb_word_dictionary = base_folder + "word_dict.bin"
-...
+```
+ If you are doing music transcription on _Windows_, directory-related variables in files related to _MusicNet_ would need to be changed in a similar manner.
+
+# Citing _Residual Shuffle-Exchange networks_
+
+If you use _Residual Shuffle-Exchange networks_, please use the following _BibTeX_ entry when citing the paper:
+```
+@inproceedings{draguns2021residual,
+  title={Residual Shuffle-Exchange Networks for Fast Processing of Long Sequences},
+  author={Draguns, Andis and Ozoli{\c{n}}{\v{s}}, Em{\=\i}ls and {\v{S}}ostaks, Agris and Apinis, Mat{\=\i}ss and Freivalds, Karlis},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume={35},
+  number={8},
+  pages={7245--7253},
+  year={2021}
+}
 ```
 
-## Contact information
+# Contact information
 
 For help or issues using _Residual Shuffle-Exchange networks_, please submit a _GitHub_ issue.
 

@@ -179,7 +179,8 @@ def get_batch(max_length, batch_size, do_train, task, offset=None, preset=None):
             elem = cur_set[length][cur_ind]
             cur_ind += 1
             if cur_ind >= len(cur_set[length]):
-                random.shuffle(cur_set[length])
+                if not (do_train is False and task == "musicnet" and cnf.musicnet_visualise):
+                    random.shuffle(cur_set[length])
                 cur_ind = 0
             counters[length] = cur_ind
             if offset is not None and offset + b < len(cur_set[length]):

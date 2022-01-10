@@ -2,6 +2,7 @@
 
 import os
 
+import argparse
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import average_precision_score
@@ -11,9 +12,10 @@ import data_feeder
 import data_utils as data_gen
 from RSE_model import RSE
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # use cpu only, to be able running in parallel with training
 os.environ["CUDA_VISIBLE_DEVICES"] = cnf.gpu_instance
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # use cpu only, to be able running in parallel with training
 os.environ["TF_ENABLE_AUTO_MIXED_PRECISION"] = "1"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '20'
 
 ATTEMPTS = 10
 BATCH_SIZE = ATTEMPTS
@@ -33,11 +35,15 @@ def data_set_test(test_length):
         yield batch_xs, batch_ys, target_y
 
 
-def prepare_data_for_test():
+def prepare_data_for_test(inference_file_path=None):
     data_gen.init()
     task = data_gen.find_data_task(cnf.task)
-    task.prepare_test_data()
-    data_gen.collect_bins()
+    if inference_file_path is not None:  # don't shuffle the file
+        task.prepare_inference_data(inference_file_path)
+        data_gen.reset_counters()
+    else:
+        task.prepare_test_data()
+        data_gen.collect_bins()
     data_gen.print_bin_usage()
 
 
@@ -112,10 +118,10 @@ def run_test():
     print("Accuracy:", correct_v / total_v)
 
 
-def run_test_musicnet():
+def run_test_musicnet(inference_file_path=None, filename=None, save_results=False):
     global BATCH_SIZE
     BATCH_SIZE = cnf.batch_size
-    prepare_data_for_test()
+    prepare_data_for_test(inference_file_path)
     data_gen.test_counters = np.zeros(cnf.bin_max_len, dtype=np.int32)  # reset test counters
     data_supplier = data_feeder.create_data_supplier()
 
@@ -145,8 +151,7 @@ def run_test_musicnet():
 
                     stride_labels = 128
                     n_frames = cnf.musicnet_window_size // stride_labels - 1
-                    labels_pre = np.array(batch_ys[0])[:,
-                                 stride_labels * (n_frames // 2):stride_labels * (n_frames // 2) + 128]
+                    labels_pre = np.array(batch_ys[0])[:, stride_labels * (n_frames // 2):stride_labels * (n_frames // 2) + 128]
                     labels_flat = (labels_pre - 1).flatten()  # gets 0/1 labels on 128 notes
                     predictions += list(pred_flat)
                     labels += list(labels_flat)
@@ -163,6 +168,8 @@ def run_test_musicnet():
                 print("Cutting {} input duplicates".format(n_overshoot))
                 print("Done testing on all {} test inputs".format(len(labels) / 128))
                 print("AVERAGE PRECISION SCORE on all test data = {0:.7f}".format(avg_prec_score))
+                if save_results:
+                    np.save(filename, np.array([predictions, labels]))
 
 
 def correct_answers_in_batch(target_batch, result_batch) -> int:
@@ -183,7 +190,12 @@ def create_tester(test_length):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('inference_file_path')
+    parser.add_argument('inference_file_name')
+    args = parser.parse_args()
     if cnf.task == "musicnet":
-        run_test_musicnet()
+        if args.inference_file_path:
+            run_test_musicnet(inference_file_path=args.inference_file_path, filename=args.inference_file_name, save_results=True)
     else:
         run_test()
