@@ -1,0 +1,2 @@
+model_checkpoint_path: "/host-dir/gpu0/varWeights.ckpt"
+all_model_checkpoint_paths: "/host-dir/gpu0/varWeights.ckpt"

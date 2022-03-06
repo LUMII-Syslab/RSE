@@ -13,11 +13,6 @@ MUSICNET_TRAIN = f"musicnet_data/musicnet_{str_fourier}_train_{cnf.musicnet_file
 MUSICNET_VALIDATION = f"musicnet_data/musicnet_{str_fourier}_validation_{cnf.musicnet_file_window_size}.npy"
 MUSICNET_TEST = f"musicnet_data/musicnet_{str_fourier}_test_{cnf.musicnet_file_window_size}.npy"
 
-def get_parsed_musicnet():
-    print("No training set found that matches config.py. Getting musicnet and parsing it.")
-    run(["python3", "musicnet_data/get_musicnet.py"])  # download musicnet if it is missing
-    run(["python3", "musicnet_data/parse_file.py"])  # parse file so it can be processed by the model
-
 
 class Musicnet(LanguageTask):
     def __init__(self) -> None:
@@ -26,8 +21,6 @@ class Musicnet(LanguageTask):
         self.training_set = []
         self.validation_set = []
         self.testing_set = []
-        if not os.path.exists(MUSICNET_TRAIN):
-            get_parsed_musicnet()
 
     def crop(self, xy_set):
         """Crop data to a smaller sized window."""

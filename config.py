@@ -38,7 +38,7 @@ test_data_size = 1024
 
 """MusicNet configuration"""
 musicnet_window_size = 8192  # power of two within [256, 8192]
-musicnet_do_fourier_transform = False  # use dataset pre-processed with Fourier transform
+musicnet_do_fourier_transform = True  # use dataset pre-processed with Fourier transform
 musicnet_fourier_multiplier = 1  # use dataset with first values from x times larger Fourier window (1 = whole window)
 musicnet_file_window_size = 8192  # select .npy dataset files with this non-cropped window size
 musicnet_visualise = False  # disables validation data shuffling for better visualisation
@@ -71,10 +71,10 @@ all_tasks = {"sort", "kvsort", "id", "rev", "rev2", "incr", "add", "left", "righ
 language_tasks = {"lambada", "musicnet"}
 
 """Recommended settings for binary addition"""
-task = "badd"
-n_input = 13  # range of input digits
-n_output = 4  # range of output digits
-n_hidden = 48 * 4  # number of maps
+# task = "badd"
+# n_input = 13  # range of input digits
+# n_output = 4  # range of output digits
+# n_hidden = 48 * 4  # number of maps
 
 """Recommended settings for rotation"""
 # task = "rol"
@@ -173,21 +173,21 @@ n_hidden = 48 * 4  # number of maps
 # bins = [256]
 
 """Recommended settings for MusicNet"""
-# task = "musicnet"
-# n_Benes_blocks = 2  # depth of the model
-# n_hidden = 48 * 4  # first layer size of RSU (2m)
-# batch_size = 16
-# training_iters = 100000 + 1
-# input_word_dropout_keep_prob = 1.0
-# label_smoothing = 0.01
-# embedding_size = 1
-# max_test_length = 10000
-# test_data_size = 10000
-# input_type = tf.float32
-# n_input = musicnet_vocab_size
-# n_output = musicnet_vocab_size
-# bins = [musicnet_window_size]
-# musicnet_resample_step = musicnet_mmap_count // (batch_size+1)  # each x steps resamples if musicnet_resample == True
+task = "musicnet"
+n_Benes_blocks = 2  # depth of the model
+n_hidden = 48 * 4  # first layer size of RSU (2m)
+batch_size = 16
+training_iters = 800000 + 1
+input_word_dropout_keep_prob = 1.0
+label_smoothing = 0.01
+embedding_size = 1
+max_test_length = 10000
+test_data_size = 10000
+input_type = tf.float32
+n_input = musicnet_vocab_size
+n_output = musicnet_vocab_size
+bins = [musicnet_window_size]
+musicnet_resample_step = musicnet_mmap_count // (batch_size+1)  # each x steps resamples if musicnet_resample == True
 
 
 initial_learning_rate = 0.00125 * np.sqrt(96 / n_hidden)

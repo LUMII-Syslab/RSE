@@ -13,7 +13,7 @@ from scipy.fft import rfft  # real fast Fourier transform
 
 n_features = 8192  # number of features (the window size)
 do_fourier_transform = True
-fourier_multiplier = 2  # how many times longer is fourier window
+fourier_multiplier = 1  # how many times longer is fourier window
 
 sampling_rate = 11000  # samples/second
 note_types = 128  # number of distinct notes
@@ -81,7 +81,7 @@ def create_set(recording_IDs, stride, mode, filename=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename')
+    parser.add_argument('--filename')
     args = parser.parse_args()
     if args.filename:
         np_load_old = np.load

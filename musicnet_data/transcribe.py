@@ -189,7 +189,7 @@ if __name__ == "__main__":
     if not os.path.exists(results_file_path):
         samplerate = wav_to_npz(args.filename_wav)  # wav -> npz
         resample_musicnet(f"{filename}.npz", f"{filename}_11khz.npz", samplerate, 11000)  # resample to 11khz
-        run(["python3", "parse_file.py", f"{filename}_11khz.npz"])  # parse file so it can be processed by the model
+        run(["python3", "parse_file.py", "--filename", f"{filename}_11khz.npz"])  # parse file so it can be processed by the model
         tester_path = f"{os.path.join(dir_path, '..', 'tester.py')}"
         run(["python3", tester_path, inference_file_path, f"{filename}_results.npy"])  # run inference
         run(["rm", f"{filename}.npz", f"{filename}_11khz.npz", f"{filename}.npy"])  # remove temporary files
