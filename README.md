@@ -90,22 +90,29 @@ To start training the _Residual Shuffle-Exchange network_, run the terminal comm
 python3 trainer.py
 ```
 
-By default it will train on the binary addition task. To select the sequence processing task for which to train the _Residual Shuffle-Exchange network_, edit the `config.py` file that contains various hyperparameter and setting options.
+By default it will train on the music transcription task. To select the sequence processing task for which to train the _Residual Shuffle-Exchange network_, edit the `config.py` file that contains various hyperparameter and setting options.
 
 ## Music transcription
 
-For the _MusicNet_ music transcription task uncomment the corresponding settings in `config.py`:
+For the _MusicNet_ music transcription task, make sure that the corresponding settings in `config.py` are uncommented:
 ```
 """Recommended settings for MusicNet"""
 # task = "musicnet"
 # n_Benes_blocks = 2  # depth of the model
 ...
 ```
-If you have not downloaded and parsed the _MusicNet_, running trainer.py will do it automatically if `task` is set to `'musicnet'` in `config.py`. This might take a while. If you run out of RAM (it can take more than 40GB), you can download `musicnet.npz` from [Kaggle](https://www.kaggle.com/imsparsh/musicnet-dataset/version/1?select=musicnet.npz) and place it in the `musicnet_data` directory.
+To train the model on the _MusicNet_ dataset, the dataset has to be downloaded and parsed - that can be done by running:
+```
+python3 musicnet_data/get_musicnet.py
+python3 musicnet_data/parse_file.py
+```
+This might take a while. If you run out of RAM (it can take more than 40GB), you can download `musicnet.npz` from [Kaggle](https://www.kaggle.com/imsparsh/musicnet-dataset/version/1?select=musicnet.npz) and place it in the `musicnet_data` directory.
 
 If you have enough RAM to load the entire dataset (can be more than 128GB), set `musicnet_subset` to `False` for faster training. Increasing `musicnet_window_size` requires more RAM and trains slower but produces greater accuracy.
 
-To test the trained model for the _MusicNet_ task on the test set, run `tester.py`. To transcribe a custom wav file to MIDI, run:
+To use a pretrained model for music transcription, place the contents of `trained_model_m8192F1` in the `out_dir` directory specified in the `config.py` file.
+
+To test the trained model for the _MusicNet_ task on the test set, run `tester.py`. To transcribe a custom wav file to MIDI, place the file in the `musicnet_data` directory and run:
 ```
 python3 transcribe.py yourwavfile.wav
 ```
